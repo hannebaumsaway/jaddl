@@ -1,0 +1,37 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M27 49.7166L29.0812 50.4848C29.6839 50.7072 30.0927 51.2574 30.1637 51.9415L30.357 53.8039L28.2757 53.0357C27.6731 52.8133 27.2643 52.2631 27.1933 51.579L27 49.7166Z" fill="#3D3D3D"/>
+<path d="M34.2175 49.7166L32.1362 50.4848C31.5336 50.7072 31.1248 51.2574 31.0538 51.9415L30.8605 53.8039L32.9417 53.0357C33.5444 52.8133 33.9532 52.2631 34.0242 51.579L34.2175 49.7166Z" fill="#3D3D3D"/>
+<path d="M28 59H33V72H28V59Z" fill="url(#paint0_linear_1_2)"/>
+<rect x="48" y="59" width="5" height="13" fill="url(#paint1_linear_1_2)"/>
+<circle cx="43" cy="9" r="2" fill="#3D3D3D"/>
+<path d="M21 72H52L50.5 77H19.5L21 72Z" fill="#3D3D3D"/>
+<rect x="35" y="9" width="9" height="44" fill="#3D3D3D"/>
+<rect x="22" y="6" width="9" height="3" fill="#3D3D3D"/>
+<rect width="24" height="3" transform="matrix(-1 0 0 1 55 6)" fill="#717171"/>
+<path d="M30 3H38L36 6H28L30 3Z" fill="#3D3D3D"/>
+<path d="M49.5 3H38L36 6L51.5 6.13398L49.5 3Z" fill="#717171"/>
+<rect width="1" height="44" transform="matrix(-1 0 0 1 45 9)" fill="#717171"/>
+<path d="M59 72H52L50.5 77H59V72Z" fill="#717171"/>
+<circle cx="49" cy="9" r="2" fill="#3D3D3D"/>
+<circle cx="50" cy="9" r="2" fill="#717171"/>
+<circle cx="34" cy="9" r="2" fill="#3D3D3D"/>
+<circle cx="35" cy="9" r="2" fill="#717171"/>
+<circle cx="26" cy="9" r="2" fill="#3D3D3D"/>
+<path d="M38.7113 3.5L41.5 3.5V6H37L38.7113 3.5Z" fill="#3D3D3D"/>
+<path d="M42 3.5L45.5 3.5V6H42V3.5Z" fill="#3D3D3D"/>
+<path d="M49 3.5L46 3.5V6H50.5L49 3.5Z" fill="#3D3D3D"/>
+<path d="M47 49.7166L49.0812 50.4848C49.6839 50.7072 50.0927 51.2574 50.1637 51.9415L50.357 53.8039L48.2757 53.0357C47.6731 52.8133 47.2643 52.2631 47.1933 51.579L47 49.7166Z" fill="#3D3D3D"/>
+<path d="M54.2175 49.7166L52.1362 50.4848C51.5336 50.7072 51.1248 51.2574 51.0538 51.9415L50.8605 53.8039L52.9417 53.0357C53.5444 52.8133 53.9532 52.2631 54.0242 51.579L54.2175 49.7166Z" fill="#3D3D3D"/>
+<rect x="25" y="53" width="24" height="6" fill="#3D3D3D"/>
+<rect width="6" height="6" transform="matrix(-1 0 0 1 55 53)" fill="#717171"/>
+<defs>
+<linearGradient id="paint0_linear_1_2" x1="32.4444" y1="66.0909" x2="30.5" y2="66.0909" gradientUnits="userSpaceOnUse">
+<stop stop-color="#717171"/>
+<stop offset="1" stop-color="#3D3D3D"/>
+</linearGradient>
+<linearGradient id="paint1_linear_1_2" x1="52.4444" y1="66.0909" x2="50.5" y2="66.0909" gradientUnits="userSpaceOnUse">
+<stop stop-color="#717171"/>
+<stop offset="1" stop-color="#3D3D3D"/>
+</linearGradient>
+</defs>
+</svg>
