@@ -47,13 +47,11 @@ export function Header() {
       <div className="container mx-auto flex h-20 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center">
-          <Image
+          <img
             src="/images/jaddl-nav-wordmark-dark.svg"
             alt="JADDL"
-            width={240}
-            height={54}
-            className="h-14"
-            unoptimized
+            className="h-14 w-auto"
+            style={{ maxWidth: '240px' }}
           />
         </Link>
 
@@ -74,13 +72,11 @@ export function Header() {
             <DialogContent className="w-[300px] sm:w-[400px]">
               <div className="flex flex-col space-y-4 mt-6">
                 <div className="flex items-center mb-6">
-                  <Image
+                  <img
                     src="/images/jaddl-nav-wordmark-dark.svg"
                     alt="JADDL"
-                    width={210}
-                    height={48}
-                    className="h-12"
-                    unoptimized
+                    className="h-12 w-auto"
+                    style={{ maxWidth: '210px' }}
                   />
                 </div>
                 <NavItems className="flex-col space-x-0 space-y-4" />

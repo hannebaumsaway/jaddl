@@ -15,13 +15,11 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* League Info */}
           <div className="space-y-4">
-            <Image 
+            <img 
               src="/images/jaddl-nav-logo-dark.svg" 
               alt="JADDL Logo" 
-              width={256}
-              height={128}
               className="h-32 w-auto"
-              unoptimized
+              style={{ maxWidth: '256px' }}
             />
           </div>
 

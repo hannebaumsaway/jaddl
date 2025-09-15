@@ -55,13 +55,11 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="text-center space-y-4">
         <div className="flex justify-center mb-6">
-          <Image 
+          <img 
             src="/images/jaddl-nav-logo-dark.svg" 
-            alt="JADDL Logo" 
-            width={200}
-            height={64}
+            alt="JADDL Logo - Fantasy Football League" 
             className="h-16 w-auto"
-            unoptimized
+            style={{ maxWidth: '200px' }}
           />
         </div>
         <h1 className="text-4xl font-bold text-foreground sm:text-5xl">
