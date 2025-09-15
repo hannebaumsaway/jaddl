@@ -8,6 +8,7 @@ import { getMostRecentWeek } from '@/lib/supabase/scores';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import NavigationControls from '@/components/scores/NavigationControls';
+import { TeamSelectorWrapper } from '@/components/scores/TeamSelectorWrapper';
 
 export const metadata: Metadata = {
   title: 'Scores | JADDL',
@@ -173,13 +174,11 @@ export default async function ScoresPage({
           {isHeadToHead ? 'Head-to-Head Matchups' : 'Weekly Scores'}
         </h1>
         {isHeadToHead ? (
-          <div className="px-4 py-2 bg-muted rounded-lg font-semibold mt-2">
-            {(() => {
-              const team1 = contentfulTeams.find(t => t.teamId === team1Id);
-              const team2 = contentfulTeams.find(t => t.teamId === team2Id);
-              return `${team1?.shortName || 'Team 1'} vs ${team2?.shortName || 'Team 2'}`;
-            })()}
-          </div>
+          <TeamSelectorWrapper
+            teams={contentfulTeams}
+            team1Id={team1Id}
+            team2Id={team2Id}
+          />
         ) : (
           <div className="px-4 py-2 bg-muted rounded-lg font-semibold mt-2">
             {seasonYear} Season • {(() => {
@@ -207,6 +206,147 @@ export default async function ScoresPage({
           </Link>
         </div>
       )}
+
+      {/* Head-to-Head Summary Stats */}
+      {isHeadToHead && (() => {
+        const team1 = contentfulTeams.find(t => t.teamId === team1Id);
+        const team2 = contentfulTeams.find(t => t.teamId === team2Id);
+        
+        if (!team1 || !team2) return null;
+
+        // Calculate head-to-head statistics
+        const h2hGames = enhancedGames.filter(game => 
+          (game.home_team_id === team1Id && game.away_team_id === team2Id) ||
+          (game.home_team_id === team2Id && game.away_team_id === team1Id)
+        );
+
+        if (h2hGames.length === 0) return null;
+
+        // Calculate wins for each team
+        const team1Wins = h2hGames.filter(game => {
+          const isTeam1Home = game.home_team_id === team1Id;
+          return isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+        }).length;
+
+        const team2Wins = h2hGames.length - team1Wins;
+
+        // Calculate average scores
+        const team1TotalScore = h2hGames.reduce((sum, game) => {
+          const isTeam1Home = game.home_team_id === team1Id;
+          return sum + (isTeam1Home ? game.home_score : game.away_score);
+        }, 0);
+
+        const team2TotalScore = h2hGames.reduce((sum, game) => {
+          const isTeam2Home = game.home_team_id === team2Id;
+          return sum + (isTeam2Home ? game.home_score : game.away_score);
+        }, 0);
+
+        const team1AvgScore = team1TotalScore / h2hGames.length;
+        const team2AvgScore = team2TotalScore / h2hGames.length;
+
+        // Calculate longest streak
+        const calculateLongestStreak = (games: any[], teamId: number) => {
+          let currentStreak = 0;
+          let longestStreak = 0;
+          let lastWinner = null;
+
+          for (const game of games) {
+            const isTeam1Home = game.home_team_id === team1Id;
+            const team1Won = isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+            const winner = team1Won ? team1Id : team2Id;
+
+            if (winner === teamId) {
+              if (lastWinner === teamId) {
+                currentStreak++;
+              } else {
+                currentStreak = 1;
+              }
+            } else {
+              currentStreak = 0;
+            }
+
+            longestStreak = Math.max(longestStreak, currentStreak);
+            lastWinner = winner;
+          }
+
+          return longestStreak;
+        };
+
+        const team1LongestStreak = calculateLongestStreak(h2hGames, team1Id);
+        const team2LongestStreak = calculateLongestStreak(h2hGames, team2Id);
+
+        // Separate regular season and playoff games
+        const regularSeasonGames = h2hGames.filter(game => !game.playoffs);
+        const playoffGames = h2hGames.filter(game => game.playoffs);
+
+        const team1RegularWins = regularSeasonGames.filter(game => {
+          const isTeam1Home = game.home_team_id === team1Id;
+          return isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+        }).length;
+
+        const team1PlayoffWins = playoffGames.filter(game => {
+          const isTeam1Home = game.home_team_id === team1Id;
+          return isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+        }).length;
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {/* Overall Record */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {team1Wins}-{team2Wins}
+                </div>
+                <div className="text-sm text-muted-foreground">Overall Record</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {team1Wins > team2Wins ? `${team1.shortName} leads` : 
+                   team2Wins > team1Wins ? `${team2.shortName} leads` : 
+                   'Tied'}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Longest Streak */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {Math.max(team1LongestStreak, team2LongestStreak)}
+                </div>
+                <div className="text-sm text-muted-foreground">Longest Streak</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {team1LongestStreak > team2LongestStreak ? team1.shortName : team2.shortName}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Average Score */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {team1AvgScore.toFixed(1)} - {team2AvgScore.toFixed(1)}
+                </div>
+                <div className="text-sm text-muted-foreground">Avg Score</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  in favor of {team1AvgScore > team2AvgScore ? team1.shortName : team2.shortName}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Playoffs vs Regular Season */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {playoffGames.length > 0 ? `${team1PlayoffWins}-${playoffGames.length - team1PlayoffWins}` : '0-0'}
+                </div>
+                <div className="text-sm text-muted-foreground">Playoffs</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {playoffGames.length > 0 ? `${team1RegularWins}-${regularSeasonGames.length - team1RegularWins} regular season` : 'No playoffs'}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {!isHeadToHead && (
         <NavigationControls 
@@ -284,82 +424,156 @@ export default async function ScoresPage({
 
       {/* Games Grid */}
       {hasGames ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={isHeadToHead ? "space-y-4" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
           {enhancedGames.map((game) => (
             <Card key={game.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-col space-y-1.5 p-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    {isPlayoffs ? 
-                      (currentWeek === 1 ? 'Quarterfinals' : 
-                       currentWeek === 2 ? 'Semifinals' : 
-                       currentWeek === 3 ? 'Championship' : 
-                       `Playoff Week ${currentWeek}`) : 
-                      'Regular Season'
-                    }
+                    {isHeadToHead ? (
+                      `${game.year} Season • ${game.playoffs ? 
+                        (game.week === 1 ? 'Quarterfinals' : 
+                         game.week === 2 ? 'Semifinals' : 
+                         game.week === 3 ? 'Championship' : 
+                         `Playoff Week ${game.week}`) : 
+                        `Week ${game.week}`
+                      }`
+                    ) : (
+                      isPlayoffs ? 
+                        (currentWeek === 1 ? 'Quarterfinals' : 
+                         currentWeek === 2 ? 'Semifinals' : 
+                         currentWeek === 3 ? 'Championship' : 
+                         `Playoff Week ${currentWeek}`) : 
+                        'Regular Season'
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Game #{game.id}
-                  </div>
+                  {!isHeadToHead && (
+                    <div className="text-sm text-muted-foreground">
+                      Game #{game.id}
+                    </div>
+                  )}
                 </div>
               </CardHeader>
-              <CardContent className="p-6 pt-0 space-y-4">
-                <div className={`flex items-center justify-between p-3 rounded-lg ${
-                  game.away_score > game.home_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 flex items-center justify-center">
-                      {game.awayTeam.isContentfulLogo ? (
-                        <Image
-                          src={game.awayTeam.logo}
-                          alt={`${game.awayTeam.name} logo`}
-                          width={32}
-                          height={32}
-                          className="rounded-lg"
-                        />
-                      ) : (
-                        <span className="text-xl">🏈</span>
-                      )}
+              <CardContent className="p-6 pt-0">
+                {isHeadToHead ? (
+                  // Head-to-head layout: teams side by side
+                  <div className="flex items-center justify-between">
+                    {/* Away Team (Left) */}
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
+                      game.away_score > game.home_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                    }`}>
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        {game.awayTeam.isContentfulLogo ? (
+                          <Image
+                            src={game.awayTeam.logo}
+                            alt={`${game.awayTeam.name} logo`}
+                            width={32}
+                            height={32}
+                            className="rounded-lg"
+                          />
+                        ) : (
+                          <span className="text-xl">🏈</span>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
+                        <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                      </div>
+                      <div className={`text-2xl font-bold ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {game.away_score.toFixed(1)}
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
-                      <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                    
+                    {/* VS Separator */}
+                    <div className="px-4 text-sm text-muted-foreground font-medium">VS</div>
+                    
+                    {/* Home Team (Right) */}
+                    <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
+                      game.home_score > game.away_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                    }`}>
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        {game.homeTeam.isContentfulLogo ? (
+                          <Image
+                            src={game.homeTeam.logo}
+                            alt={`${game.homeTeam.name} logo`}
+                            width={32}
+                            height={32}
+                            className="rounded-lg"
+                          />
+                        ) : (
+                          <span className="text-xl">🏈</span>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
+                        <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                      </div>
+                      <div className={`text-2xl font-bold ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {game.home_score.toFixed(1)}
+                      </div>
                     </div>
                   </div>
-                  <div className={`league-score ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {game.away_score.toFixed(1)}
-                  </div>
-                </div>
-                <div className="text-center text-sm text-muted-foreground font-medium">VS</div>
-                <div className={`flex items-center justify-between p-3 rounded-lg ${
-                  game.home_score > game.away_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 flex items-center justify-center">
-                      {game.homeTeam.isContentfulLogo ? (
-                        <Image
-                          src={game.homeTeam.logo}
-                          alt={`${game.homeTeam.name} logo`}
-                          width={32}
-                          height={32}
-                          className="rounded-lg"
-                        />
-                      ) : (
-                        <span className="text-xl">🏈</span>
-                      )}
+                ) : (
+                  // Regular weekly layout: teams stacked
+                  <div className="space-y-4">
+                    <div className={`flex items-center justify-between p-3 rounded-lg ${
+                      game.away_score > game.home_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          {game.awayTeam.isContentfulLogo ? (
+                            <Image
+                              src={game.awayTeam.logo}
+                              alt={`${game.awayTeam.name} logo`}
+                              width={32}
+                              height={32}
+                              className="rounded-lg"
+                            />
+                          ) : (
+                            <span className="text-xl">🏈</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
+                          <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                        </div>
+                      </div>
+                      <div className={`league-score ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {game.away_score.toFixed(1)}
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
-                      <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                    <div className="text-center text-sm text-muted-foreground font-medium">VS</div>
+                    <div className={`flex items-center justify-between p-3 rounded-lg ${
+                      game.home_score > game.away_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          {game.homeTeam.isContentfulLogo ? (
+                            <Image
+                              src={game.homeTeam.logo}
+                              alt={`${game.homeTeam.name} logo`}
+                              width={32}
+                              height={32}
+                              className="rounded-lg"
+                            />
+                          ) : (
+                            <span className="text-xl">🏈</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
+                          <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                        </div>
+                      </div>
+                      <div className={`league-score ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {game.home_score.toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="text-center pt-2">
+                      <div className="text-sm text-green-600 font-medium">Final Score</div>
                     </div>
                   </div>
-                  <div className={`league-score ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {game.home_score.toFixed(1)}
-                  </div>
-                </div>
-                <div className="text-center pt-2">
-                  <div className="text-sm text-green-600 font-medium">Final Score</div>
-                </div>
+                )}
               </CardContent>
             </Card>
           ))}
