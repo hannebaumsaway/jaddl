@@ -16,7 +16,7 @@ export function Footer() {
           {/* League Info */}
           <div className="space-y-4">
             <img 
-              src="/images/jaddl-nav-logo-dark.svg" 
+              src="https://jaddl.vercel.app/images/jaddl-nav-logo-dark.svg"
               alt="JADDL Logo" 
               className="h-32 w-auto"
               style={{ maxWidth: '256px' }}
