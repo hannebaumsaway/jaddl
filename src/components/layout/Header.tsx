@@ -53,6 +53,7 @@ export function Header() {
             width={240}
             height={54}
             className="h-14"
+            unoptimized
           />
         </Link>
 
@@ -79,6 +80,7 @@ export function Header() {
                     width={210}
                     height={48}
                     className="h-12"
+                    unoptimized
                   />
                 </div>
                 <NavItems className="flex-col space-x-0 space-y-4" />

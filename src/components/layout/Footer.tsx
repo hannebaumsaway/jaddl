@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Trophy, Mail, Calendar, Users } from 'lucide-react';
 import type { Route } from 'next';
 
@@ -14,10 +15,13 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* League Info */}
           <div className="space-y-4">
-            <img 
+            <Image 
               src="/images/jaddl-nav-logo-dark.svg" 
               alt="JADDL Logo" 
+              width={256}
+              height={128}
               className="h-32 w-auto"
+              unoptimized
             />
           </div>
 

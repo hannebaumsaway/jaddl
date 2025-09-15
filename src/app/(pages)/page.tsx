@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { Trophy, TrendingUp, Calendar, Users, Award } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,10 +55,13 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="text-center space-y-4">
         <div className="flex justify-center mb-6">
-          <img 
+          <Image 
             src="/images/jaddl-nav-logo-dark.svg" 
             alt="JADDL Logo" 
+            width={200}
+            height={64}
             className="h-16 w-auto"
+            unoptimized
           />
         </div>
         <h1 className="text-4xl font-bold text-foreground sm:text-5xl">
