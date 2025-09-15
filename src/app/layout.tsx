@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 
 import { Header, Footer, ErrorBoundary } from '@/components/layout';
 
@@ -58,6 +59,7 @@ export default function RootLayout({
           </main>
           <Footer />
         </ErrorBoundary>
+        <Analytics />
       </body>
     </html>
   );
