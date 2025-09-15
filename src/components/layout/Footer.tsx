@@ -68,11 +68,11 @@ export function Footer() {
               </div>
               <div className="flex items-center space-x-2">
                 <Calendar className="h-4 w-4" />
-                <span>Est. 2020</span>
+                <span>Est. 2003</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Trophy className="h-4 w-4" />
-                <span>4 Seasons Completed</span>
+                <span>22 Seasons Completed</span>
               </div>
             </div>
           </div>
