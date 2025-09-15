@@ -48,7 +48,7 @@ export function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <img
-            src="https://jaddl.vercel.app/images/jaddl-nav-wordmark-dark.svg"
+            src="/images/jaddl-nav-wordmark-dark.svg"
             alt="JADDL"
             className="h-14 w-auto"
             style={{ maxWidth: '240px' }}
@@ -73,7 +73,7 @@ export function Header() {
               <div className="flex flex-col space-y-4 mt-6">
                 <div className="flex items-center mb-6">
                   <img
-                    src="https://jaddl.vercel.app/images/jaddl-nav-wordmark-dark.svg"
+                    src="/images/jaddl-nav-wordmark-dark.svg"
                     alt="JADDL"
                     className="h-12 w-auto"
                     style={{ maxWidth: '210px' }}

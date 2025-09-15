@@ -58,7 +58,7 @@ export default async function HomePage() {
       <section className="text-center space-y-4">
         <div className="flex justify-center mb-6">
           <img 
-            src="https://jaddl.vercel.app/images/jaddl-nav-logo-dark.svg"
+            src="/images/jaddl-nav-logo-dark.svg"
             alt="JADDL Logo - Fantasy Football League" 
             className="h-16 w-auto"
             style={{ maxWidth: '200px' }}
