@@ -272,6 +272,11 @@ export async function getSeasonRecords(): Promise<LeagueHistory['seasonRecords']
       return percentage > maxPercentage ? { ...stat, percentage } : { ...max, percentage: maxPercentage };
     }, stats[0] || { wins: 0, losses: 0, team: 'N/A', owner: 'N/A', year: 0 });
 
+    // Calculate the final percentage for the best team
+    const finalPercentage = (bestWinPercentage.wins + bestWinPercentage.losses) > 0 
+      ? bestWinPercentage.wins / (bestWinPercentage.wins + bestWinPercentage.losses) 
+      : 0;
+
     return {
       highestSeasonScore: {
         team: highestSeasonScore.team,
@@ -294,7 +299,7 @@ export async function getSeasonRecords(): Promise<LeagueHistory['seasonRecords']
       bestWinPercentage: {
         team: bestWinPercentage.team,
         owner: bestWinPercentage.owner,
-        value: bestWinPercentage.percentage || 0,
+        value: finalPercentage,
         year: bestWinPercentage.year,
       }
     };
