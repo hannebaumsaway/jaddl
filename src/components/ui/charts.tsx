@@ -166,13 +166,15 @@ export function StackedBarChartComponent({
   xKey, 
   yKeys, 
   colors = ['#525252', '#d4d4d4'], // neutral-600, neutral-300
-  yAxisDomain = [0, 30]
+  yAxisDomain = [0, 30],
+  onBarClick
 }: {
   data: any[];
   xKey: string;
   yKeys: string[];
   colors?: string[];
   yAxisDomain?: [number, number];
+  onBarClick?: (opponentName: string, opponentId: number) => void;
 }) {
   return (
     <ResponsiveContainer width="100%" height={250}>
@@ -227,6 +229,12 @@ export function StackedBarChartComponent({
               dataKey={key} 
               fill={colors[index % colors.length]} 
               stackId="stack"
+              onClick={(data: any) => {
+                if (onBarClick && data && data.payload) {
+                  onBarClick(data.payload[xKey], data.payload.opponentId);
+                }
+              }}
+              style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               shape={(props: any) => {
                 const { payload, fill, x, y, width, height } = props;
                 

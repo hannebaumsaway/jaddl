@@ -26,12 +26,12 @@ import {
   LineChartComponent, 
   AreaChartComponent, 
   BarChartComponent, 
-  PieChartComponent,
-  StackedBarChartComponent
+  PieChartComponent
 } from '@/components/ui/charts';
 import { SeasonHistoryDataTable } from '@/components/pages/SeasonHistoryDataTable';
 import { RecentForm } from '@/components/pages/RecentForm';
 import { AchievementsCard } from '@/components/pages/AchievementsCard';
+import { HeadToHeadChart } from '@/components/pages/HeadToHeadChart';
 import { CurvedText } from '@/components/ui/curved-text';
 
 import { getTeamProfiles } from '@/lib/contentful/api';
@@ -604,19 +604,16 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 sm:h-80">
-              <StackedBarChartComponent
-                data={headToHeadData.map(h2h => ({
-                  opponent: h2h.opponentName,
-                  wins: h2h.wins,
-                  losses: h2h.losses,
-                  total: h2h.games || 0
-                }))}
-                xKey="opponent"
-                yKeys={['wins', 'losses']}
-                yAxisDomain={[0, 30]}
-              />
-            </div>
+            <HeadToHeadChart
+              data={headToHeadData.map(h2h => ({
+                opponent: h2h.opponentName,
+                opponentId: h2h.opponentId,
+                wins: h2h.wins,
+                losses: h2h.losses,
+                total: h2h.games || 0
+              }))}
+              currentTeamId={team.teamId}
+            />
             <div className="mt-4 text-center text-sm text-muted-foreground font-mono">
               <div className="flex items-center justify-center space-x-4">
                 <div className="flex items-center space-x-2">

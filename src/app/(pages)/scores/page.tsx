@@ -42,7 +42,7 @@ export const metadata: Metadata = {
 export default async function ScoresPage({
   searchParams,
 }: {
-  searchParams: { year?: string; week?: string; playoffs?: string };
+  searchParams: { year?: string; week?: string; playoffs?: string; team1?: string; team2?: string };
 }) {
   // Get the most recent available week as default
   const mostRecentWeek = await getMostRecentWeek();
@@ -51,23 +51,32 @@ export default async function ScoresPage({
   const seasonYear = parseInt(searchParams.year || mostRecentWeek.year.toString());
   const currentWeek = parseInt(searchParams.week || mostRecentWeek.week.toString());
   const isPlayoffs = searchParams.playoffs === 'true' || (searchParams.playoffs === undefined && mostRecentWeek.isPlayoff);
+  
+  // Get team filtering parameters
+  const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
+  const team2Id = searchParams.team2 ? parseInt(searchParams.team2) : null;
+  const isHeadToHead = team1Id && team2Id;
 
   // Fetch teams from Contentful for logos/names
   const contentfulTeams = await getTeamProfiles();
 
   // Fetch actual games from Supabase
-  let query = supabase
-    .from('games')
-    .select('*')
-    .eq('year', seasonYear)
-    .eq('week', currentWeek);
+  let query = supabase.from('games').select('*');
   
-  // Filter by playoffs if the parameter is provided
-  if (isPlayoffs !== undefined) {
-    query = query.eq('playoffs', isPlayoffs);
+  if (isHeadToHead) {
+    // For head-to-head, show all games between the two teams across all years
+    query = query.or(`and(home_team_id.eq.${team1Id},away_team_id.eq.${team2Id}),and(home_team_id.eq.${team2Id},away_team_id.eq.${team1Id})`);
+  } else {
+    // Normal weekly view
+    query = query.eq('year', seasonYear).eq('week', currentWeek);
+    
+    // Filter by playoffs if the parameter is provided
+    if (isPlayoffs !== undefined) {
+      query = query.eq('playoffs', isPlayoffs);
+    }
   }
   
-  const { data: games, error } = await query.order('id');
+  const { data: games, error } = await query.order('year', { ascending: false }).order('week', { ascending: false });
 
   const actualGames = games || [];
 
@@ -160,31 +169,58 @@ export default async function ScoresPage({
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-4">Weekly Scores</h1>
-        <div className="px-4 py-2 bg-muted rounded-lg font-semibold mt-2">
-          {seasonYear} Season • {(() => {
-            if (isPlayoffs) {
-              const playoffRound = currentWeek === 1 ? 'Quarterfinals' : 
-                                  currentWeek === 2 ? 'Semifinals' : 
-                                  currentWeek === 3 ? 'Championship' : 
-                                  `Playoff Week ${currentWeek}`;
-              return playoffRound;
-            }
-            return `Week ${currentWeek}`;
-          })()}
-        </div>
+        <h1 className="text-4xl font-bold text-foreground mb-4">
+          {isHeadToHead ? 'Head-to-Head Matchups' : 'Weekly Scores'}
+        </h1>
+        {isHeadToHead ? (
+          <div className="px-4 py-2 bg-muted rounded-lg font-semibold mt-2">
+            {(() => {
+              const team1 = contentfulTeams.find(t => t.teamId === team1Id);
+              const team2 = contentfulTeams.find(t => t.teamId === team2Id);
+              return `${team1?.shortName || 'Team 1'} vs ${team2?.shortName || 'Team 2'}`;
+            })()}
+          </div>
+        ) : (
+          <div className="px-4 py-2 bg-muted rounded-lg font-semibold mt-2">
+            {seasonYear} Season • {(() => {
+              if (isPlayoffs) {
+                const playoffRound = currentWeek === 1 ? 'Quarterfinals' : 
+                                    currentWeek === 2 ? 'Semifinals' : 
+                                    currentWeek === 3 ? 'Championship' : 
+                                    `Playoff Week ${currentWeek}`;
+                return playoffRound;
+              }
+              return `Week ${currentWeek}`;
+            })()}
+          </div>
+        )}
       </div>
 
-      <NavigationControls 
-        seasonYear={seasonYear}
-        currentWeek={currentWeek}
-        availableYears={availableYears}
-        availableWeeks={availableWeeks}
-        isPlayoffs={isPlayoffs}
-      />
+      {/* Back button for head-to-head view */}
+      {isHeadToHead && (
+        <div className="mb-6 text-center">
+          <Link 
+            href="/scores" 
+            className="inline-flex items-center px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Back to Weekly Scores
+          </Link>
+        </div>
+      )}
 
-      {/* Week Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      {!isHeadToHead && (
+        <NavigationControls 
+          seasonYear={seasonYear}
+          currentWeek={currentWeek}
+          availableYears={availableYears}
+          availableWeeks={availableWeeks}
+          isPlayoffs={isPlayoffs}
+        />
+      )}
+
+      {/* Week Stats - Only show for weekly view */}
+      {!isHeadToHead && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-foreground font-mono">
@@ -244,6 +280,7 @@ export default async function ScoresPage({
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Games Grid */}
       {hasGames ? (
