@@ -4,6 +4,9 @@ import { Trophy, TrendingUp, Calendar, Users, Award } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// Force dynamic rendering to avoid static generation issues
+export const dynamic = 'force-dynamic';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -19,37 +22,36 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  // Fetch real data
-      const [currentSeason, recentArticles, teamProfiles, supabaseTeams] = await Promise.all([
-        getCurrentSeason(),
-        getJaddlArticles(5, 0), // Get 5 most recent articles
-        getTeamProfiles(),
-        getTeams()
-      ]);
+  try {
+    // Fetch data sequentially to avoid response conflicts
+    const currentSeason = await getCurrentSeason();
+    const recentArticles = await getJaddlArticles(5, 0);
+    const teamProfiles = await getTeamProfiles();
+    const supabaseTeams = await getTeams();
 
-  const currentYear = currentSeason?.year || new Date().getFullYear();
-  
-  // Get current week from the most recent game
-  const { data: latestGame } = await supabase
-    .from('games')
-    .select('week')
-    .eq('year', currentYear)
-    .order('week', { ascending: false })
-    .limit(1)
-    .single();
-  
-  const currentWeek = (latestGame as any)?.week || 1;
-  
-  // Get current standings
-  const standings = await calculateStandings(currentYear);
-  
-  // Create team lookup for standings display
-  const enrichedTeams = enrichTeamsWithSupabaseData(teamProfiles, supabaseTeams);
-  const teamLookup = new Map(enrichedTeams.map(team => [team.teamId, team]));
-  
-  // Determine structure type for display
-  const structureType = currentSeason?.structure_type || 'single_league';
-  const structureLabel = structureType === 'quads' ? 'Quads' : 'Divisions';
+    const currentYear = currentSeason?.year || new Date().getFullYear();
+    
+    // Get current week from the most recent game
+    const { data: latestGame } = await supabase
+      .from('games')
+      .select('week')
+      .eq('year', currentYear)
+      .order('week', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const currentWeek = (latestGame as any)?.week || 1;
+    
+    // Get current standings
+    const standings = await calculateStandings(currentYear);
+    
+    // Create team lookup for standings display
+    const enrichedTeams = enrichTeamsWithSupabaseData(teamProfiles, supabaseTeams);
+    const teamLookup = new Map(enrichedTeams.map(team => [team.teamId, team]));
+    
+    // Determine structure type for display
+    const structureType = currentSeason?.structure_type || 'single_league';
+    const structureLabel = structureType === 'quads' ? 'Quads' : 'Divisions';
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Hero Section */}
@@ -210,4 +212,28 @@ export default async function HomePage() {
       </section>
     </div>
   );
+  } catch (error) {
+    console.error('Error loading home page data:', error);
+    // Return a fallback UI if data loading fails
+    return (
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        <section className="text-center space-y-4">
+          <div className="flex justify-center mb-6">
+            <img 
+              src="/images/jaddl-nav-logo-dark.svg" 
+              alt="JADDL Logo - Fantasy Football League" 
+              className="h-16 w-auto"
+              style={{ maxWidth: '200px' }}
+            />
+          </div>
+          <h1 className="text-4xl font-bold text-foreground sm:text-5xl">
+            Welcome to The JADDL
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Loading league data...
+          </p>
+        </section>
+      </div>
+    );
+  }
 }
