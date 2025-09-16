@@ -104,7 +104,11 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
                     Week {elimination.week}
                   </Badge>
                   <span className="text-sm font-medium">
-                    {elimination.team?.team_name || `Team ${elimination.team?.team_id}`}
+                    {'teamName' in (elimination.team || {}) 
+                      ? (elimination.team as any).teamName 
+                      : ('name' in (elimination.team || {}) 
+                        ? (elimination.team as any).name 
+                        : `Team ${elimination.team?.team_id || 'Unknown'}`)}
                   </span>
                 </div>
                 <div className="text-sm text-red-600 font-bold">
