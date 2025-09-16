@@ -33,7 +33,7 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
     const eliminatedTeam = week.teams.find(t => t.eliminated);
     const teamProfile = teamProfiles.find(tp => tp.teamId === eliminatedTeam?.team_id);
     return {
-      week: week.week,
+      week: week.eliminationWeek || 1,
       team: teamProfile || eliminatedTeam?.team,
       score: eliminatedTeam?.score || 0
     };
