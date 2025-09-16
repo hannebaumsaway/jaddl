@@ -244,6 +244,8 @@ export function StackedBarChartComponent({
                 const isOnlyWins = hasWins && !hasLosses;
                 const isOnlyLosses = hasLosses && !hasWins;
                 
+                const cursorStyle = onBarClick ? 'pointer' : 'default';
+                
                 if (isOnlyWins || isOnlyLosses) {
                   // Single bar - round all corners
                   return (
@@ -255,6 +257,7 @@ export function StackedBarChartComponent({
                       fill={fill}
                       rx={4}
                       ry={4}
+                      style={{ cursor: cursorStyle }}
                     />
                   );
                 } else if (key === 'wins') {
@@ -267,7 +270,7 @@ export function StackedBarChartComponent({
                                 L ${x + 4} ${y + height}
                                 Q ${x} ${y + height} ${x} ${y + height - 4}
                                 Z`;
-                  return <path d={path} fill={fill} />;
+                  return <path d={path} fill={fill} style={{ cursor: cursorStyle }} />;
                 } else if (key === 'losses') {
                   // Top bar in stack (losses) - round top corners only
                   const path = `M ${x} ${y + height - 4}
@@ -278,7 +281,7 @@ export function StackedBarChartComponent({
                                 L ${x + width} ${y + height}
                                 L ${x} ${y + height}
                                 Z`;
-                  return <path d={path} fill={fill} />;
+                  return <path d={path} fill={fill} style={{ cursor: cursorStyle }} />;
                 } else {
                   // Middle bars (if any) - no rounded corners
                   return (
@@ -288,6 +291,7 @@ export function StackedBarChartComponent({
                       width={width}
                       height={height}
                       fill={fill}
+                      style={{ cursor: cursorStyle }}
                     />
                   );
                 }

@@ -228,6 +228,18 @@ export interface ProcessedJaddlArticle {
     width?: number;
     height?: number;
   };
+  featuredTeams?: {
+    id: string;
+    teamId: number;
+    teamName: string;
+    shortName: string;
+    logo?: {
+      url: string;
+      alt: string;
+      width?: number;
+      height?: number;
+    };
+  }[];
 }
 
 // API Response Types

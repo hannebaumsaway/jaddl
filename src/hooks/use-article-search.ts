@@ -14,7 +14,8 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
     year: undefined,
     week: undefined,
     isPlayoff: undefined,
-    tags: []
+    tags: [],
+    featuredTeams: []
   });
 
   // Extract text content from Rich Text for search
@@ -70,6 +71,14 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
       );
     }
 
+    if (filters.featuredTeams.length > 0) {
+      filtered = filtered.filter(article => 
+        article.featuredTeams?.some(team => 
+          filters.featuredTeams.includes(team.teamId)
+        )
+      );
+    }
+
     return filtered;
   }, [articles, searchQuery, filters, extractTextFromRichText]);
 
@@ -84,6 +93,15 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
     return Array.from(new Set(tags)).sort();
   }, [articles]);
 
+  const availableTeams = useMemo(() => {
+    const teams = articles.flatMap(article => article.featuredTeams || []);
+    // Remove duplicates based on teamId
+    const uniqueTeams = teams.filter((team, index, self) => 
+      index === self.findIndex(t => t.teamId === team.teamId)
+    );
+    return uniqueTeams.sort((a, b) => a.teamName.localeCompare(b.teamName));
+  }, [articles]);
+
   const clearSearch = useCallback(() => {
     setSearchQuery('');
   }, []);
@@ -93,7 +111,8 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
       year: undefined,
       week: undefined,
       isPlayoff: undefined,
-      tags: []
+      tags: [],
+      featuredTeams: []
     });
   }, []);
 
@@ -110,6 +129,7 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
     filteredArticles,
     availableYears,
     availableTags,
+    availableTeams,
     clearSearch,
     clearFilters,
     clearAll,
@@ -118,7 +138,8 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
       filters.year !== undefined || 
       filters.week !== undefined || 
       filters.isPlayoff !== undefined || 
-      filters.tags.length > 0,
+      filters.tags.length > 0 ||
+      filters.featuredTeams.length > 0,
     totalResults: filteredArticles.length
   };
 }

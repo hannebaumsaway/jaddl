@@ -27,6 +27,7 @@ export function NewsPageClient({ articles }: NewsPageClientProps) {
     filteredArticles,
     availableYears,
     availableTags,
+    availableTeams,
     clearAll,
     hasActiveSearch,
     hasActiveFilters,
@@ -114,6 +115,7 @@ export function NewsPageClient({ articles }: NewsPageClientProps) {
             onFiltersChange={setFilters}
             availableYears={availableYears}
             availableTags={availableTags}
+            availableTeams={availableTeams}
             isExpanded={showFilters}
           />
         )}

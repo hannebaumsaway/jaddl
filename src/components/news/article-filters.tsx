@@ -15,12 +15,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { TeamFilterChip } from './team-filter-chip';
 
 export interface FilterState {
   year?: number;
   week?: number;
   isPlayoff?: boolean;
   tags: string[];
+  featuredTeams: number[];
 }
 
 interface ArticleFiltersProps {
@@ -28,6 +30,18 @@ interface ArticleFiltersProps {
   onFiltersChange: (filters: FilterState) => void;
   availableYears: number[];
   availableTags: string[];
+  availableTeams: {
+    id: string;
+    teamId: number;
+    teamName: string;
+    shortName: string;
+    logo?: {
+      url: string;
+      alt: string;
+      width?: number;
+      height?: number;
+    };
+  }[];
   className?: string;
   isExpanded?: boolean;
 }
@@ -37,6 +51,7 @@ export function ArticleFilters({
   onFiltersChange,
   availableYears,
   availableTags,
+  availableTeams,
   className,
   isExpanded = false
 }: ArticleFiltersProps) {
@@ -45,7 +60,8 @@ export function ArticleFilters({
     filters.year !== undefined || 
     filters.week !== undefined || 
     filters.isPlayoff !== undefined || 
-    filters.tags.length > 0;
+    filters.tags.length > 0 ||
+    filters.featuredTeams.length > 0;
 
   const handleYearChange = (value: string) => {
     const year = value === 'all' ? undefined : parseInt(value);
@@ -68,12 +84,20 @@ export function ArticleFilters({
     onFiltersChange({ ...filters, tags: newTags });
   };
 
+  const handleTeamToggle = (teamId: number) => {
+    const newTeams = filters.featuredTeams.includes(teamId)
+      ? filters.featuredTeams.filter(id => id !== teamId)
+      : [...filters.featuredTeams, teamId];
+    onFiltersChange({ ...filters, featuredTeams: newTeams });
+  };
+
   const clearAllFilters = () => {
     onFiltersChange({
       year: undefined,
       week: undefined,
       isPlayoff: undefined,
-      tags: []
+      tags: [],
+      featuredTeams: []
     });
   };
 
@@ -135,6 +159,28 @@ export function ArticleFilters({
               />
             </Badge>
           ))}
+          {filters.featuredTeams.map(teamId => {
+            const team = availableTeams.find(t => t.teamId === teamId);
+            if (!team) return null;
+            return (
+              <Badge key={teamId} variant="secondary" className="flex items-center gap-1">
+                {team.logo?.url ? (
+                  <img
+                    src={team.logo.url}
+                    alt={`${team.teamName} logo`}
+                    className="w-3 h-3 rounded-sm"
+                  />
+                ) : (
+                  <span className="text-xs">🏈</span>
+                )}
+                {team.shortName}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => handleTeamToggle(teamId)}
+                />
+              </Badge>
+            );
+          })}
         </div>
       )}
 
@@ -188,15 +234,38 @@ export function ArticleFilters({
           <Separator />
 
           {/* Playoff Filter */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3 p-3 bg-background border rounded-lg hover:bg-muted/50 transition-colors">
             <Checkbox
               id="playoff-filter"
               checked={filters.isPlayoff === true}
               onCheckedChange={handlePlayoffChange}
+              className="border-2 border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
-            <Label htmlFor="playoff-filter" className="text-sm font-medium">
+            <Label 
+              htmlFor="playoff-filter" 
+              className="text-sm font-medium cursor-pointer flex-1"
+            >
               Playoff articles only
             </Label>
+          </div>
+
+          <Separator />
+
+          {/* Teams Filter */}
+          <div className="space-y-2">
+            <Label>Featured Teams</Label>
+            <div className="max-h-32 overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
+                {availableTeams.map(team => (
+                  <TeamFilterChip
+                    key={team.teamId}
+                    team={team}
+                    isSelected={filters.featuredTeams.includes(team.teamId)}
+                    onToggle={handleTeamToggle}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
           <Separator />

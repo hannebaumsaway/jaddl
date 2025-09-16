@@ -327,7 +327,7 @@ export async function getJaddlArticles(
       limit,
       skip,
       order: '-fields.year,-fields.week' as any,
-      include: 1,
+      include: 2, // Include referenced content (featuredTeams)
     };
 
     // Add filters
@@ -463,6 +463,13 @@ function processJaddlArticle(entry: any): ProcessedJaddlArticle {
     tags: fields.tags || [],
     isPlayoff: fields.week >= 13, // Week 13+ is considered playoff
     featuredImage: processAsset(fields.featureImage), // Note: using featureImage field
+    featuredTeams: fields.featuredTeams?.map((team: any) => ({
+      id: team.sys.id,
+      teamId: team.fields.teamId,
+      teamName: team.fields.teamName,
+      shortName: team.fields.shortName,
+      logo: processAsset(team.fields.logo),
+    })) || [],
   };
 }
 
