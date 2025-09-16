@@ -905,7 +905,7 @@ export async function getSurvivorData(year: number): Promise<SurvivorData[]> {
       // Calculate weekly scores for active teams
       const weeklyScores: { team_id: number; score: number; team: Team }[] = [];
       
-      for (const teamId of activeTeams) {
+      for (const teamId of Array.from(activeTeams)) {
         const teamGames = weekGames.filter(g => 
           g.home_team_id === teamId || g.away_team_id === teamId
         );
