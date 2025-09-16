@@ -17,7 +17,8 @@ export async function GET() {
       'league_seasons',
       'seasons',
       'weekly_scores',
-      'team_records'
+      'team_records',
+      'survivor'
     ];
 
     for (const tableName of tablesToTry) {

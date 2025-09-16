@@ -14,6 +14,7 @@ const navigationItems = [
   { name: 'News', href: '/news' },
   { name: 'Scores', href: '/scores' },
   { name: 'Standings', href: '/standings' },
+  { name: 'Survivor', href: '/survivor' },
   { name: 'Teams', href: '/teams' },
   { name: 'History', href: '/history' },
 ];

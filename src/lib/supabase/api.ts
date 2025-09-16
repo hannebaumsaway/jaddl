@@ -852,3 +852,115 @@ export async function getArticles(
     return [];
   }
 }
+
+// Survivor
+export interface SurvivorEntry {
+  year: number;
+  week: number;
+  team_id: number;
+  score: number | null;
+  eliminated: boolean;
+  team?: Team;
+}
+
+export interface SurvivorData {
+  year: number;
+  teams: SurvivorEntry[];
+  eliminationWeek: number | null; // Week when team was eliminated (null if still alive)
+}
+
+export async function getSurvivorData(year: number): Promise<SurvivorData[]> {
+  try {
+    // Get all games for the season
+    const games = await getGames(year);
+    
+    // Get all teams that played in this season
+    const { data: teamSeasons, error: teamSeasonsError } = await supabase
+      .from('team_seasons')
+      .select(`
+        *,
+        team:teams(*)
+      `)
+      .eq('year', year) as { data: any[] | null, error: any };
+
+    if (teamSeasonsError) {
+      handleSupabaseError(teamSeasonsError, 'getSurvivorData');
+      return [];
+    }
+
+    const teams = (teamSeasons || []).map(ts => ts.team as Team);
+    
+    // Get all weeks in the season
+    const weeks = Array.from(new Set(games.map(g => g.week))).sort((a, b) => a - b);
+    
+    // Calculate survivor data
+    const survivorData: SurvivorData[] = [];
+    let activeTeams = new Set(teams.map(t => t.team_id));
+    
+    for (const week of weeks) {
+      const weekGames = games.filter(g => g.week === week && !g.playoffs);
+      
+      if (weekGames.length === 0) continue;
+      
+      // Calculate weekly scores for active teams
+      const weeklyScores: { team_id: number; score: number; team: Team }[] = [];
+      
+      for (const teamId of activeTeams) {
+        const teamGames = weekGames.filter(g => 
+          g.home_team_id === teamId || g.away_team_id === teamId
+        );
+        
+        if (teamGames.length === 0) continue;
+        
+        const game = teamGames[0]; // Should only be one game per team per week
+        const isHome = game.home_team_id === teamId;
+        const score = isHome ? game.home_score : game.away_score;
+        
+        if (score !== null && score !== undefined) {
+          const team = teams.find(t => t.team_id === teamId);
+          if (team) {
+            weeklyScores.push({ team_id: teamId, score, team });
+          }
+        }
+      }
+      
+      // Sort by score (ascending - lowest score gets eliminated)
+      weeklyScores.sort((a, b) => a.score - b.score);
+      
+      // Add survivor entries for this week
+      const weekData: SurvivorData = {
+        year,
+        teams: weeklyScores.map((entry, index) => ({
+          year,
+          week,
+          team_id: entry.team_id,
+          score: entry.score,
+          eliminated: false, // Will be set below for the lowest scorer
+          team: entry.team
+        })),
+        eliminationWeek: null
+      };
+      
+      // Mark the lowest scorer as eliminated
+      if (weeklyScores.length > 0) {
+        const eliminatedTeamId = weeklyScores[0].team_id;
+        const eliminatedTeam = weekData.teams.find(t => t.team_id === eliminatedTeamId);
+        if (eliminatedTeam) {
+          eliminatedTeam.eliminated = true;
+          weekData.eliminationWeek = week;
+        }
+        activeTeams.delete(eliminatedTeamId);
+      }
+      
+      survivorData.push(weekData);
+      
+      // Stop if only one team left
+      if (activeTeams.size <= 1) break;
+    }
+    
+    return survivorData;
+  } catch (error) {
+    handleSupabaseError(error, 'getSurvivorData');
+    return [];
+  }
+}

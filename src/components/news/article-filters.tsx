@@ -105,82 +105,81 @@ export function ArticleFilters({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Clear All Button */}
+      {/* Active Filters and Clear All Button */}
       {hasActiveFilters && (
-        <div className="flex justify-end">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Active Filters */}
+          <div className="flex flex-wrap gap-2">
+            {filters.year !== undefined && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Year: {filters.year}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => onFiltersChange({ ...filters, year: undefined })}
+                />
+              </Badge>
+            )}
+            {filters.week !== undefined && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Week: {filters.week}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => onFiltersChange({ ...filters, week: undefined })}
+                />
+              </Badge>
+            )}
+            {filters.isPlayoff !== undefined && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                {filters.isPlayoff ? 'Playoffs' : 'Regular Season'}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => onFiltersChange({ ...filters, isPlayoff: undefined })}
+                />
+              </Badge>
+            )}
+            {filters.tags.map(tag => (
+              <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                {tag}
+                <X 
+                  className="h-3 w-3 cursor-pointer" 
+                  onClick={() => handleTagToggle(tag)}
+                />
+              </Badge>
+            ))}
+            {filters.featuredTeams.map(teamId => {
+              const team = availableTeams.find(t => t.teamId === teamId);
+              if (!team) return null;
+              return (
+                <Badge key={teamId} variant="secondary" className="flex items-center gap-1">
+                  {team.logo?.url ? (
+                    <img
+                      src={team.logo.url}
+                      alt={`${team.teamName} logo`}
+                      className="w-3 h-3 rounded-sm"
+                    />
+                  ) : (
+                    <span className="text-xs">🏈</span>
+                  )}
+                  {team.shortName}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => handleTeamToggle(teamId)}
+                  />
+                </Badge>
+              );
+            })}
+          </div>
+          
+          {/* Clear All Button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={clearAllFilters}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground self-start sm:self-center"
           >
             <X className="h-4 w-4 mr-1" />
             Clear All
           </Button>
-        </div>
-      )}
-
-      {/* Active Filters */}
-      {hasActiveFilters && (
-        <div className="flex flex-wrap gap-2">
-          {filters.year !== undefined && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Year: {filters.year}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => onFiltersChange({ ...filters, year: undefined })}
-              />
-            </Badge>
-          )}
-          {filters.week !== undefined && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              Week: {filters.week}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => onFiltersChange({ ...filters, week: undefined })}
-              />
-            </Badge>
-          )}
-          {filters.isPlayoff !== undefined && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              {filters.isPlayoff ? 'Playoffs' : 'Regular Season'}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => onFiltersChange({ ...filters, isPlayoff: undefined })}
-              />
-            </Badge>
-          )}
-          {filters.tags.map(tag => (
-            <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-              {tag}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => handleTagToggle(tag)}
-              />
-            </Badge>
-          ))}
-          {filters.featuredTeams.map(teamId => {
-            const team = availableTeams.find(t => t.teamId === teamId);
-            if (!team) return null;
-            return (
-              <Badge key={teamId} variant="secondary" className="flex items-center gap-1">
-                {team.logo?.url ? (
-                  <img
-                    src={team.logo.url}
-                    alt={`${team.teamName} logo`}
-                    className="w-3 h-3 rounded-sm"
-                  />
-                ) : (
-                  <span className="text-xs">🏈</span>
-                )}
-                {team.shortName}
-                <X 
-                  className="h-3 w-3 cursor-pointer" 
-                  onClick={() => handleTeamToggle(teamId)}
-                />
-              </Badge>
-            );
-          })}
         </div>
       )}
 
