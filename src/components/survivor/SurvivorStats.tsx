@@ -108,7 +108,11 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
                       ? (elimination.team as any).teamName 
                       : ('name' in (elimination.team || {}) 
                         ? (elimination.team as any).name 
-                        : `Team ${elimination.team?.team_id || 'Unknown'}`)}
+                        : `Team ${('teamId' in (elimination.team || {}) 
+                          ? (elimination.team as any).teamId 
+                          : ('id' in (elimination.team || {}) 
+                            ? (elimination.team as any).id 
+                            : 'Unknown'))}`)}
                   </span>
                 </div>
                 <div className="text-sm text-red-600 font-bold">
