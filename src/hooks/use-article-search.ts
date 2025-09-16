@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProcessedJaddlArticle } from '@/types/contentful';
 import { FilterState } from '@/components/news/article-filters';
 
@@ -9,14 +10,58 @@ interface UseArticleSearchProps {
 }
 
 export function useArticleSearch({ articles }: UseArticleSearchProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
-    year: undefined,
-    week: undefined,
-    isPlayoff: undefined,
-    tags: [],
-    featuredTeams: []
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Initialize state from URL params
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const year = searchParams.get('year');
+    const week = searchParams.get('week');
+    const isPlayoff = searchParams.get('playoff');
+    const tags = searchParams.get('tags');
+    const teams = searchParams.get('teams');
+    
+    return {
+      year: year ? parseInt(year) : undefined,
+      week: week ? parseInt(week) : undefined,
+      isPlayoff: isPlayoff ? isPlayoff === 'true' : undefined,
+      tags: tags ? tags.split(',') : [],
+      featuredTeams: teams ? teams.split(',').map(id => parseInt(id)) : []
+    };
   });
+
+  // Update URL when filters or search query change
+  const updateURL = useCallback((newSearchQuery: string, newFilters: FilterState) => {
+    const params = new URLSearchParams();
+    
+    if (newSearchQuery.trim()) {
+      params.set('q', newSearchQuery.trim());
+    }
+    
+    if (newFilters.year !== undefined) {
+      params.set('year', newFilters.year.toString());
+    }
+    
+    if (newFilters.week !== undefined) {
+      params.set('week', newFilters.week.toString());
+    }
+    
+    if (newFilters.isPlayoff !== undefined) {
+      params.set('playoff', newFilters.isPlayoff.toString());
+    }
+    
+    if (newFilters.tags.length > 0) {
+      params.set('tags', newFilters.tags.join(','));
+    }
+    
+    if (newFilters.featuredTeams.length > 0) {
+      params.set('teams', newFilters.featuredTeams.join(','));
+    }
+    
+    const newURL = params.toString() ? `?${params.toString()}` : '';
+    router.replace(newURL as any, { scroll: false });
+  }, [router]);
 
   // Extract text content from Rich Text for search
   const extractTextFromRichText = useCallback((content: any): string => {
@@ -104,28 +149,65 @@ export function useArticleSearch({ articles }: UseArticleSearchProps) {
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
-  }, []);
+    updateURL('', filters);
+  }, [filters, updateURL]);
 
   const clearFilters = useCallback(() => {
-    setFilters({
+    const newFilters = {
       year: undefined,
       week: undefined,
       isPlayoff: undefined,
       tags: [],
       featuredTeams: []
-    });
-  }, []);
+    };
+    setFilters(newFilters);
+    updateURL(searchQuery, newFilters);
+  }, [searchQuery, updateURL]);
 
   const clearAll = useCallback(() => {
-    clearSearch();
-    clearFilters();
-  }, [clearSearch, clearFilters]);
+    const newFilters = {
+      year: undefined,
+      week: undefined,
+      isPlayoff: undefined,
+      tags: [],
+      featuredTeams: []
+    };
+    setSearchQuery('');
+    setFilters(newFilters);
+    updateURL('', newFilters);
+  }, [updateURL]);
+
+  // Sync URL changes back to state (for browser back/forward)
+  useEffect(() => {
+    const newSearchQuery = searchParams.get('q') || '';
+    const newFilters: FilterState = {
+      year: searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined,
+      week: searchParams.get('week') ? parseInt(searchParams.get('week')!) : undefined,
+      isPlayoff: searchParams.get('playoff') ? searchParams.get('playoff') === 'true' : undefined,
+      tags: searchParams.get('tags') ? searchParams.get('tags')!.split(',') : [],
+      featuredTeams: searchParams.get('teams') ? searchParams.get('teams')!.split(',').map(id => parseInt(id)) : []
+    };
+    
+    setSearchQuery(newSearchQuery);
+    setFilters(newFilters);
+  }, [searchParams]);
+
+  // Wrapper functions that update both state and URL
+  const setSearchQueryWithURL = useCallback((query: string) => {
+    setSearchQuery(query);
+    updateURL(query, filters);
+  }, [filters, updateURL]);
+
+  const setFiltersWithURL = useCallback((newFilters: FilterState) => {
+    setFilters(newFilters);
+    updateURL(searchQuery, newFilters);
+  }, [searchQuery, updateURL]);
 
   return {
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: setSearchQueryWithURL,
     filters,
-    setFilters,
+    setFilters: setFiltersWithURL,
     filteredArticles,
     availableYears,
     availableTags,

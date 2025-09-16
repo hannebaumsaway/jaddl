@@ -6,7 +6,7 @@ import { Search, FileText, Calendar, Filter } from 'lucide-react';
 import { ProcessedJaddlArticle } from '@/types/contentful';
 import { useArticleSearch } from '@/hooks/use-article-search';
 import { SearchBar } from '@/components/news/search-bar';
-import { ArticleFilters } from '@/components/news/article-filters';
+import { ArticleFilters, FilterState } from '@/components/news/article-filters';
 import { ArticleCard } from '@/components/news/article-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,13 +41,13 @@ export function NewsPageClient({ articles }: NewsPageClientProps) {
     const tagParam = searchParams.get('tag');
     if (tagParam) {
       const decodedTag = decodeURIComponent(tagParam);
-      setFilters(prev => ({
-        ...prev,
+      setFilters({
+        ...filters,
         tags: [decodedTag]
-      }));
+      });
       setShowFilters(true); // Show filters when a tag is selected
     }
-  }, [searchParams, setFilters]);
+  }, [searchParams, setFilters, filters]);
 
 
   return (
