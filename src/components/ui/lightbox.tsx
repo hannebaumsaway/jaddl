@@ -54,18 +54,19 @@ export function Lightbox({ isOpen, onClose, imageUrl, imageAlt, title }: Lightbo
 
       {/* Image container */}
       <div 
-        className="relative max-w-[90vw] max-h-[90vh] mx-4"
+        className="relative max-w-[90vw] max-h-[90vh] mx-4 flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full max-h-[90vh] flex items-center justify-center">
           <Image
             src={imageUrl}
             alt={imageAlt}
             width={1200}
             height={800}
-            className="object-contain max-w-full max-h-full rounded-lg"
+            className="object-contain max-w-full max-h-[90vh] rounded-lg"
             priority
             sizes="90vw"
+            style={{ maxHeight: '90vh' }}
           />
         </div>
         
