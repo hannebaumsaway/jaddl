@@ -35,7 +35,7 @@ export function Header() {
           href={item.href as Route}
           onClick={onClick}
           className={cn(
-            'text-lg font-medium transition-colors hover:text-primary lowercase text-foreground font-mono',
+            'text-base font-medium transition-colors hover:text-primary lowercase text-foreground font-mono',
             pathname === item.href
               ? 'text-primary'
               : 'text-foreground hover:text-primary'
