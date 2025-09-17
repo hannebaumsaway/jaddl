@@ -4,10 +4,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { Menu, X } from 'lucide-react';
 import type { Route } from 'next';
 
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
 const navigationItems = [
@@ -21,6 +23,7 @@ const navigationItems = [
 
 export function Header() {
   const pathname = usePathname();
+  const { theme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const closeMobileMenu = () => {
@@ -49,12 +52,12 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <img
-              src="/images/jaddl-nav-wordmark-dark.svg"
+              src={theme === 'dark' ? "/images/jaddl-nav-wordmark-dark.svg" : "/images/jaddl-nav-wordmark-dark.svg"}
               alt="JADDL"
               className="h-14 w-auto"
               style={{ maxWidth: '240px' }}
@@ -62,8 +65,9 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
+          <div className="hidden md:flex md:items-center md:space-x-6">
             <NavItems />
+            <ThemeToggle />
           </div>
 
           {/* Mobile Menu Button */}
@@ -101,7 +105,7 @@ export function Header() {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
               <img
-                src="/images/jaddl-nav-wordmark-dark.svg"
+                src={theme === 'dark' ? "/images/jaddl-nav-wordmark-dark.svg" : "/images/jaddl-nav-wordmark-dark.svg"}
                 alt="JADDL"
                 className="h-10 w-auto"
                 style={{ maxWidth: '180px' }}
@@ -123,6 +127,14 @@ export function Header() {
                 className="flex-col space-x-0 space-y-6" 
                 onClick={closeMobileMenu}
               />
+            </div>
+
+            {/* Mobile Theme Toggle */}
+            <div className="p-6 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Theme</span>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>
