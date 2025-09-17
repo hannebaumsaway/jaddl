@@ -66,7 +66,7 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
           {seasonYear} Season • {structureLabel} Structure
         </p>
         <NavigationControls
-          currentYear={seasonYear}
+          seasonYear={seasonYear}
           prevYear={prevYear}
           nextYear={nextYear}
           availableYears={availableYears}
