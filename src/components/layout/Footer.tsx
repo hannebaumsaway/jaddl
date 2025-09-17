@@ -1,12 +1,17 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
 import { Trophy, Mail, Calendar, Users } from 'lucide-react';
 import type { Route } from 'next';
 
 import { Separator } from '@/components/ui/separator';
+import { ThemeAwareLogo } from '@/components/ui/theme-aware-logo';
 
 export function Footer() {
+  const { theme } = useTheme();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -15,8 +20,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* League Info */}
           <div className="space-y-4">
-            <img 
-              src="/images/jaddl-nav-logo-dark.svg"
+            <ThemeAwareLogo 
+              type="logo"
               alt="JADDL Logo" 
               className="h-32 w-auto"
               style={{ maxWidth: '256px' }}

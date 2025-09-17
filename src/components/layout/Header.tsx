@@ -10,6 +10,7 @@ import type { Route } from 'next';
 
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ThemeAwareLogo } from '@/components/ui/theme-aware-logo';
 import { cn } from '@/lib/utils';
 
 const navigationItems = [
@@ -56,8 +57,8 @@ export function Header() {
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <img
-              src={theme === 'dark' ? "/images/jaddl-nav-wordmark-dark.svg" : "/images/jaddl-nav-wordmark-dark.svg"}
+            <ThemeAwareLogo
+              type="wordmark"
               alt="JADDL"
               className="h-14 w-auto"
               style={{ maxWidth: '240px' }}
@@ -104,8 +105,8 @@ export function Header() {
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
-              <img
-                src={theme === 'dark' ? "/images/jaddl-nav-wordmark-dark.svg" : "/images/jaddl-nav-wordmark-dark.svg"}
+              <ThemeAwareLogo
+                type="wordmark"
                 alt="JADDL"
                 className="h-10 w-auto"
                 style={{ maxWidth: '180px' }}
