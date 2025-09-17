@@ -11,10 +11,14 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ProcessedTeamProfile } from '@/types/contentful';
+import { TeamSeason, Division, Quad } from '@/types/database';
 
 function TeamsPageClient() {
   const [showInactive, setShowInactive] = useState(false);
   const [teams, setTeams] = useState<ProcessedTeamProfile[]>([]);
+  const [teamSeasons, setTeamSeasons] = useState<TeamSeason[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [quads, setQuads] = useState<Quad[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch teams data on component mount
@@ -22,8 +26,19 @@ function TeamsPageClient() {
     async function fetchTeams() {
       try {
         const { getTeamProfiles } = await import('@/lib/contentful/api');
-        const contentfulTeams = await getTeamProfiles();
+        const { getTeamSeasons, getDivisions, getQuads } = await import('@/lib/supabase/api');
+        
+        const [contentfulTeams, seasons, divisionsData, quadsData] = await Promise.all([
+          getTeamProfiles(),
+          getTeamSeasons(),
+          getDivisions(),
+          getQuads()
+        ]);
+        
         setTeams(contentfulTeams);
+        setTeamSeasons(seasons);
+        setDivisions(divisionsData);
+        setQuads(quadsData);
       } catch (error) {
         console.error('Failed to fetch teams:', error);
       } finally {
@@ -33,6 +48,20 @@ function TeamsPageClient() {
 
     fetchTeams();
   }, []);
+
+  // Get current year (most recent season)
+  const currentYear = new Date().getFullYear();
+
+  // Helper function to get current division/quad for a team
+  const getCurrentDivisionQuad = (teamId: number) => {
+    const currentSeason = teamSeasons.find(ts => ts.team_id === teamId && ts.year === currentYear);
+    if (!currentSeason) return null;
+    
+    const division = currentSeason.division_id ? divisions.find(d => d.division_id === currentSeason.division_id) : null;
+    const quad = currentSeason.quad_id ? quads.find(q => q.quad_id === currentSeason.quad_id) : null;
+    
+    return { division, quad };
+  };
 
   // Filter teams based on active status
   const filteredTeams = teams.filter(team => 
@@ -91,7 +120,9 @@ function TeamsPageClient() {
 
       {/* Teams Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {filteredTeams.map((team) => (
+        {filteredTeams.map((team) => {
+          const currentDivisionQuad = getCurrentDivisionQuad(team.teamId);
+          return (
           <Card key={team.id} className="hover:shadow-lg transition-shadow group">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between mb-2">
@@ -138,8 +169,11 @@ function TeamsPageClient() {
                 <div className="space-y-1 text-sm">
                   <div><span className="text-muted-foreground">Name:</span> {team.teamName}</div>
                   <div><span className="text-muted-foreground">Short Name:</span> {team.shortName}</div>
-                  {team.yearEstablished && (
-                    <div><span className="text-muted-foreground">Established:</span> {team.yearEstablished}</div>
+                  {currentDivisionQuad?.division && (
+                    <div><span className="text-muted-foreground">Division:</span> {currentDivisionQuad.division.division_name}</div>
+                  )}
+                  {currentDivisionQuad?.quad && (
+                    <div><span className="text-muted-foreground">Quad:</span> {currentDivisionQuad.quad.quad_name}</div>
                   )}
                 </div>
               </div>
@@ -154,7 +188,8 @@ function TeamsPageClient() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       <Separator className="my-8" />

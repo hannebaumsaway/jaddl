@@ -476,8 +476,10 @@ export default async function ScoresPage({
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
-                        <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                        <Link href={`/teams/${game.away_team_id}`} className="hover:text-primary transition-colors">
+                          <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
+                          <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                        </Link>
                       </div>
                       <div className={`text-2xl font-bold ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
                         {game.away_score.toFixed(1)}
@@ -505,8 +507,10 @@ export default async function ScoresPage({
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
-                        <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                        <Link href={`/teams/${game.home_team_id}`} className="hover:text-primary transition-colors">
+                          <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
+                          <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                        </Link>
                       </div>
                       <div className={`text-2xl font-bold ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
                         {game.home_score.toFixed(1)}
@@ -534,8 +538,10 @@ export default async function ScoresPage({
                           )}
                         </div>
                         <div>
-                          <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
-                          <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                          <Link href={`/teams/${game.away_team_id}`} className="hover:text-primary transition-colors">
+                            <div className="font-semibold text-foreground">{game.awayTeam.name}</div>
+                            <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
+                          </Link>
                         </div>
                       </div>
                       <div className={`league-score ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
@@ -561,8 +567,10 @@ export default async function ScoresPage({
                           )}
                         </div>
                         <div>
-                          <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
-                          <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                          <Link href={`/teams/${game.home_team_id}`} className="hover:text-primary transition-colors">
+                            <div className="font-semibold text-foreground">{game.homeTeam.name}</div>
+                            <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
+                          </Link>
                         </div>
                       </div>
                       <div className={`league-score ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
