@@ -180,7 +180,7 @@ export default async function ScoresPage({
             team2Id={team2Id}
           />
         ) : (
-          <div className="px-4 py-2 bg-muted rounded-lg font-semibold mt-2">
+          <div className="px-4 py-2 font-semibold mt-2">
             {seasonYear} Season • {(() => {
               if (isPlayoffs) {
                 const playoffRound = currentWeek === 1 ? 'Quarterfinals' : 
