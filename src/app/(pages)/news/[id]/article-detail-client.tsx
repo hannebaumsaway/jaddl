@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { documentToReactComponents, Options } from '@contentful/rich-text-react-renderer';
+import { BLOCKS, INLINES } from '@contentful/rich-text-types';
 import { Lightbox, useLightbox } from '@/components/ui/lightbox';
 import { ProcessedJaddlArticle } from '@/types/contentful';
 import Link from 'next/link';
@@ -21,41 +22,103 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
   // Rich text rendering options
   const richTextOptions: Options = {
     renderNode: {
-      'heading-1': (node, children) => (
+      [BLOCKS.HEADING_1]: (node, children) => (
         <h1 className="text-3xl font-bold text-foreground mt-8 mb-4 first:mt-0">
           {children}
         </h1>
       ),
-      'heading-2': (node, children) => (
+      [BLOCKS.HEADING_2]: (node, children) => (
         <h2 className="text-2xl font-bold text-foreground mt-6 mb-3 first:mt-0">
           {children}
         </h2>
       ),
-      'heading-3': (node, children) => (
+      [BLOCKS.HEADING_3]: (node, children) => (
         <h3 className="text-xl font-semibold text-foreground mt-5 mb-2 first:mt-0">
           {children}
         </h3>
       ),
-      'paragraph': (node, children) => (
+      [BLOCKS.PARAGRAPH]: (node, children) => (
         <p className="text-lg text-foreground leading-relaxed mb-4 font-serif">
           {children}
         </p>
       ),
-      'unordered-list': (node, children) => (
+      [BLOCKS.UL_LIST]: (node, children) => (
         <ul className="list-disc list-inside text-foreground mb-4 space-y-1 font-serif">
           {children}
         </ul>
       ),
-      'ordered-list': (node, children) => (
+      [BLOCKS.OL_LIST]: (node, children) => (
         <ol className="list-decimal list-inside text-foreground mb-4 space-y-1 font-serif">
           {children}
         </ol>
       ),
-      'list-item': (node, children) => (
+      [BLOCKS.LIST_ITEM]: (node, children) => (
         <li className="text-lg text-foreground leading-relaxed font-serif">
           {children}
         </li>
       ),
+      [BLOCKS.EMBEDDED_ASSET]: (node) => {
+        const asset = node.data.target;
+        if (!asset?.fields?.file?.url) return null;
+        
+        const imageUrl = `https:${asset.fields.file.url}`;
+        const alt = asset.fields.title || asset.fields.description || '';
+        
+        return (
+          <div className="my-8">
+            <div 
+              className="relative w-full max-w-2xl mx-auto cursor-pointer group"
+              onClick={() => openLightbox(imageUrl, alt, asset.fields.title)}
+            >
+              <div className="relative h-64 md:h-96 w-full overflow-hidden rounded-lg">
+                <Image
+                  src={imageUrl}
+                  alt={alt}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
+                />
+                
+                {/* Hover overlay with zoom icon */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-3">
+                    <ZoomIn className="h-6 w-6 text-gray-800" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Image caption */}
+              {asset.fields.title && (
+                <p className="text-sm text-muted-foreground mt-2 text-center font-serif">
+                  {asset.fields.title}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      },
+      [INLINES.ASSET_HYPERLINK]: (node) => {
+        const asset = node.data.target;
+        if (!asset?.fields?.file?.url) return null;
+        
+        const imageUrl = `https:${asset.fields.file.url}`;
+        const alt = asset.fields.title || asset.fields.description || '';
+        
+        return (
+          <span 
+            className="inline-block cursor-pointer"
+            onClick={() => openLightbox(imageUrl, alt, asset.fields.title)}
+          >
+            <Image
+              src={imageUrl}
+              alt={alt}
+              width={200}
+              height={150}
+              className="inline-block rounded border hover:opacity-80 transition-opacity"
+            />
+          </span>
+        );
+      },
     },
     renderMark: {
       'bold': (text) => <strong className="font-semibold">{text}</strong>,
