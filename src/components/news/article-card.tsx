@@ -88,7 +88,7 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
                 <Badge
                   key={tag}
                   variant="outline"
-                  className="text-xs flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                  className="text-xs flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer [text-transform:lowercase!important]"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

@@ -138,7 +138,7 @@ export function ArticleFilters({
               </Badge>
             )}
             {filters.tags.map(tag => (
-              <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+              <Badge key={tag} variant="secondary" className="flex items-center gap-1 [text-transform:lowercase!important]">
                 {tag}
                 <X 
                   className="h-3 w-3 cursor-pointer" 
@@ -278,7 +278,7 @@ export function ArticleFilters({
                   <Badge
                     key={tag}
                     variant={filters.tags.includes(tag) ? "default" : "outline"}
-                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors font-mono font-normal"
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors font-mono font-normal [text-transform:lowercase!important]"
                     onClick={() => handleTagToggle(tag)}
                   >
                     {tag}

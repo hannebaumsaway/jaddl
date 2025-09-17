@@ -216,7 +216,7 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
               <Link key={tag} href={`/news?tag=${encodeURIComponent(tag)}`}>
                 <Badge
                   variant="outline"
-                  className="text-sm flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                  className="text-sm flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer [text-transform:lowercase!important]"
                 >
                   <Tag className="h-3 w-3" />
                   {tag}
