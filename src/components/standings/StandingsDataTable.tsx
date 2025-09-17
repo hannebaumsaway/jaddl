@@ -426,7 +426,7 @@ export function StandingsDataTable({
       </h2>
       <div className="overflow-x-auto">
         <Table className="min-w-[800px]">
-            <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableHeader className="sticky top-0 z-10 bg-card">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -434,7 +434,7 @@ export function StandingsDataTable({
                       key={header.id}
                       className={`${header.column.id === 'teamName' ? 'text-left' : 'text-center'} ${
                         header.column.id === 'rank' || header.column.id === 'teamName' 
-                          ? 'sticky left-0 z-20 bg-background' 
+                          ? 'sticky left-0 z-20 bg-card' 
                           : ''
                       }`}
                     >
@@ -461,7 +461,7 @@ export function StandingsDataTable({
                         key={cell.id}
                         className={
                           cell.column.id === 'rank' || cell.column.id === 'teamName' 
-                            ? 'sticky left-0 z-10 bg-background' 
+                            ? 'sticky left-0 z-10 bg-card' 
                             : ''
                         }
                       >

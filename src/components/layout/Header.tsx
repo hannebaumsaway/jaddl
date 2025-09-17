@@ -41,7 +41,7 @@ export function Header() {
           className={cn(
             'text-base font-medium transition-colors hover:text-primary lowercase text-foreground font-mono',
             pathname === item.href
-              ? 'text-primary'
+              ? 'text-foreground border-b-2 border-foreground'
               : 'text-foreground hover:text-primary'
           )}
         >
@@ -53,7 +53,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur">
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center">

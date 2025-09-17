@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ThemeAwareLogo } from '@/components/ui/theme-aware-logo';
+import { ClientLogo } from '@/components/ui/client-logo';
 import { getJaddlArticles, getTeamProfiles } from '@/lib/contentful/api';
 import { getCurrentSeason, calculateStandings, getTeams } from '@/lib/supabase/api';
 import { supabase } from '@/lib/supabase/client';
@@ -58,7 +58,7 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="text-center space-y-4">
         <div className="flex justify-center mb-6">
-          <ThemeAwareLogo 
+          <ClientLogo 
             type="logo"
             alt="JADDL Logo - Fantasy Football League" 
             className="h-16 w-auto"
@@ -220,7 +220,7 @@ export default async function HomePage() {
       <div className="container mx-auto px-4 py-8 space-y-8">
         <section className="text-center space-y-4">
           <div className="flex justify-center mb-6">
-            <ThemeAwareLogo 
+            <ClientLogo 
               type="logo"
               alt="JADDL Logo - Fantasy Football League" 
               className="h-16 w-auto"

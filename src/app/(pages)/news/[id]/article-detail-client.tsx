@@ -59,13 +59,13 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
       ),
       [BLOCKS.QUOTE]: (node, children) => (
         <blockquote className="flex items-start gap-3 my-8 pl-4">
-          <Quote className="h-4 w-4 text-ring mt-3 flex-shrink-0 rotate-180" />
+          <Quote className="h-4 w-4 text-muted-foreground mt-3 flex-shrink-0 rotate-180" />
           <div 
-            className="leading-relaxed [&_p]:!text-[1.7rem] [&_p]:!font-['IBM_Plex_Sans'] [&_p]:!text-ring [&_p]:!mb-0 [&_p]:!font-sans"
+            className="leading-relaxed [&_p]:!text-[1.7rem] [&_p]:!font-['IBM_Plex_Sans'] [&_p]:!text-muted-foreground [&_p]:!mb-0 [&_p]:!font-sans"
             style={{
               fontFamily: 'IBM Plex Sans, sans-serif',
               fontSize: '1.7rem',
-              color: 'var(--ring)',
+              color: 'var(--muted-foreground)',
             }}
           >
             {children}

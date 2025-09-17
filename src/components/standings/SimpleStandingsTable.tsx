@@ -44,10 +44,10 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
       </h3>
       <div className="overflow-x-auto" ref={scrollContainerRef}>
         <Table className="min-w-[600px]">
-          <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               <TableHead className="text-left w-10">#</TableHead>
-              <TableHead className="text-left w-32 sticky left-0 z-20 bg-background">Team</TableHead>
+              <TableHead className="text-left w-32 sticky left-0 z-20 bg-card">Team</TableHead>
               <TableHead className="text-center w-36 whitespace-nowrap">Record</TableHead>
               <TableHead className="text-center font-mono w-20">PF</TableHead>
               <TableHead className="text-center font-mono w-20">PA</TableHead>
@@ -76,7 +76,7 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
                         {index + 1}
                       </span>
                     </TableCell>
-                    <TableCell className="sticky left-0 z-10 bg-background">
+                    <TableCell className="sticky left-0 z-10 bg-card">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 flex items-center justify-center">
                           {logo ? (

@@ -460,7 +460,7 @@ export default async function ScoresPage({
                   <div className="flex items-center justify-between">
                     {/* Away Team (Left) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
-                      game.away_score > game.home_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                      game.away_score > game.home_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="w-8 h-8 flex items-center justify-center">
                         {game.awayTeam.isContentfulLogo ? (
@@ -489,7 +489,7 @@ export default async function ScoresPage({
                     
                     {/* Home Team (Right) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
-                      game.home_score > game.away_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                      game.home_score > game.away_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="w-8 h-8 flex items-center justify-center">
                         {game.homeTeam.isContentfulLogo ? (
@@ -517,7 +517,7 @@ export default async function ScoresPage({
                   // Regular weekly layout: teams stacked
                   <div className="space-y-4">
                     <div className={`flex items-center justify-between p-3 rounded-lg ${
-                      game.away_score > game.home_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                      game.away_score > game.home_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 flex items-center justify-center">
@@ -544,7 +544,7 @@ export default async function ScoresPage({
                     </div>
                     <div className="text-center text-sm text-muted-foreground font-medium">VS</div>
                     <div className={`flex items-center justify-between p-3 rounded-lg ${
-                      game.home_score > game.away_score ? 'bg-green-50 border border-green-200' : 'bg-muted'
+                      game.home_score > game.away_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 flex items-center justify-center">
