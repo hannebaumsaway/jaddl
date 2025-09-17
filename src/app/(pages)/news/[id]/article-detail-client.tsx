@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Tag, ArrowLeft, ZoomIn } from 'lucide-react';
+import { Calendar, Tag, ArrowLeft, ZoomIn, Quote } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +56,21 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
         <li className="text-lg text-foreground leading-relaxed font-serif">
           {children}
         </li>
+      ),
+      [BLOCKS.QUOTE]: (node, children) => (
+        <blockquote className="flex items-start gap-3 my-8 pl-4">
+          <Quote className="h-4 w-4 text-ring mt-3 flex-shrink-0 rotate-180" />
+          <div 
+            className="leading-relaxed [&_p]:!text-[1.7rem] [&_p]:!font-['IBM_Plex_Sans'] [&_p]:!text-ring [&_p]:!mb-0 [&_p]:!font-sans"
+            style={{
+              fontFamily: 'IBM Plex Sans, sans-serif',
+              fontSize: '1.7rem',
+              color: 'var(--ring)',
+            }}
+          >
+            {children}
+          </div>
+        </blockquote>
       ),
       [BLOCKS.EMBEDDED_ASSET]: (node) => {
         const asset = node.data.target;
