@@ -3,7 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { TeamRecord } from '@/types/database';
 import { EnrichedTeam } from '@/lib/utils/team-mapping';
 
@@ -31,28 +38,23 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
   }, []);
 
   return (
-    <Card className={isSubTable ? "bg-muted/30" : "bg-card"}>
-      <CardHeader>
-        <CardTitle className={`font-semibold tracking-tight text-center ${
-          isSubTable ? 'text-lg' : 'text-xl'
-        }`}>
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto" ref={scrollContainerRef}>
-          <table className="w-full table-auto min-w-[600px]">
-            <thead className="sticky top-0 z-10 bg-background">
-              <tr className="border-b">
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-10">#</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-32 sticky left-0 z-20 bg-background">Team</th>
-                <th className="text-center py-2 px-2 font-medium text-muted-foreground w-36 whitespace-nowrap">Record</th>
-                <th className="text-center py-2 px-2 font-medium text-muted-foreground font-mono w-20">PF</th>
-                <th className="text-center py-2 px-2 font-medium text-muted-foreground font-mono w-20">PA</th>
-                <th className="text-center py-2 px-2 font-medium text-muted-foreground font-mono w-20">+/-</th>
-              </tr>
-            </thead>
-            <tbody>
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold tracking-tight text-center">
+        {title}
+      </h3>
+      <div className="overflow-x-auto" ref={scrollContainerRef}>
+        <Table className="min-w-[600px]">
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow>
+              <TableHead className="text-left w-10">#</TableHead>
+              <TableHead className="text-left w-32 sticky left-0 z-20 bg-background">Team</TableHead>
+              <TableHead className="text-center w-36 whitespace-nowrap">Record</TableHead>
+              <TableHead className="text-center font-mono w-20">PF</TableHead>
+              <TableHead className="text-center font-mono w-20">PA</TableHead>
+              <TableHead className="text-center font-mono w-20">+/-</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
               {records.map((record, index) => {
                 const team = teamLookup.get(record.team_id);
                 const teamName = team?.teamName || record.team?.team_name || 'Unknown Team';
@@ -65,16 +67,16 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
                 const groupTies = hasQuadGroup ? (record.quad_ties ?? 0) : (record.division_ties ?? 0);
                 
                 return (
-                  <tr 
+                  <TableRow 
                     key={record.team_id} 
-                    className={`${isLastRow ? '' : 'border-b border-border/50'} hover:bg-muted/50`}
+                    className="hover:bg-muted/50"
                   >
-                    <td className="py-3 px-2">
+                    <TableCell>
                       <span className="font-mono text-sm text-muted-foreground">
                         {index + 1}
                       </span>
-                    </td>
-                    <td className="py-3 px-2 align-top sticky left-0 z-10 bg-background">
+                    </TableCell>
+                    <TableCell className="sticky left-0 z-10 bg-background">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 flex items-center justify-center">
                           {logo ? (
@@ -99,31 +101,30 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
                           </Link>
                         </div>
                       </div>
-                    </td>
-                    <td className="text-center py-3 px-2 font-mono text-foreground font-semibold whitespace-nowrap w-36">
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-foreground font-semibold whitespace-nowrap">
                       {record.wins}-{record.losses}-{record.ties}
                       {' '}
                       <span className="text-muted-foreground">({groupWins}-{groupLosses}-{groupTies})</span>
-                    </td>
-                    <td className="text-center py-3 px-2 font-mono text-foreground w-20">
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-foreground">
                       {record.points_for.toFixed(1)}
-                    </td>
-                    <td className="text-center py-3 px-2 font-mono text-foreground w-20">
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-foreground">
                       {record.points_against.toFixed(1)}
-                    </td>
-                    <td className={`text-center py-3 px-2 font-mono font-semibold ${
+                    </TableCell>
+                    <TableCell className={`text-center font-mono font-semibold ${
                       record.point_differential > 0 ? 'text-green-600' : 
                       record.point_differential < 0 ? 'text-red-600' : 'text-foreground'
                     }`}>
                       {record.point_differential > 0 ? '+' : ''}{record.point_differential.toFixed(1)}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }

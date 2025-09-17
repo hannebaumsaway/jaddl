@@ -22,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TeamRecord } from '@/types/database';
 import { EnrichedTeam } from '@/lib/utils/team-mapping';
 
@@ -421,17 +420,12 @@ export function StandingsDataTable({
   });
 
   return (
-    <Card className={isSubTable ? 'bg-muted/30' : 'bg-card'}>
-      <CardHeader>
-        <CardTitle className={`font-semibold tracking-tight text-center ${
-          isSubTable ? 'text-lg' : 'text-xl'
-        }`}>
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table className="min-w-[800px]">
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold tracking-tight text-center">
+        {title}
+      </h2>
+      <div className="overflow-x-auto">
+        <Table className="min-w-[800px]">
             <TableHeader className="sticky top-0 z-10 bg-background">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -490,9 +484,8 @@ export function StandingsDataTable({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+        </Table>
+      </div>
+    </div>
   );
 }

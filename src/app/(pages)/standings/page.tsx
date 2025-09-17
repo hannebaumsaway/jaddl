@@ -62,20 +62,19 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
       {/* Header with Navigation */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-foreground mb-4">League Standings</h1>
-        <p className="text-lg text-muted-foreground mb-4">
+        <p className="text-lg text-muted-foreground mb-6">
           {seasonYear} Season • {structureLabel} Structure
         </p>
-        
-        {/* Year Navigation */}
         <NavigationControls
-          seasonYear={seasonYear}
-          availableYears={sortedYears}
+          currentYear={seasonYear}
           prevYear={prevYear}
           nextYear={nextYear}
+          availableYears={availableYears}
         />
       </div>
 
-      {standings.overall.length === 0 ? (
+      {/* Standings Content */}
+      {!standings.overall || standings.overall.length === 0 ? (
         <div className="text-center py-12">
           <Trophy className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No Data Available</h3>
@@ -84,50 +83,54 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Division Standings - Show First */}
-          {hasDivisions && !hasQuads && standings.divisions && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-foreground text-center">Division Standings</h2>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {Object.entries(standings.divisions).map(([divisionName, divisionRecords]) => (
-                  <SimpleStandingsTable
-                    key={divisionName}
-                    title={divisionName}
-                    records={divisionRecords as any[]}
-                    teamLookup={teamLookup}
-                    isSubTable
-                  />
-                ))}
+        <>
+          <div className="space-y-8">
+            {/* Division Standings - Show First */}
+            {hasDivisions && !hasQuads && standings.divisions && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-foreground text-center">Division Standings</h2>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {Object.entries(standings.divisions).map(([divisionName, divisionRecords]) => (
+                    <SimpleStandingsTable
+                      key={divisionName}
+                      title={divisionName}
+                      records={divisionRecords as any[]}
+                      teamLookup={teamLookup}
+                      isSubTable
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Quad Standings - Show First */}
-          {hasQuads && standings.quads && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-foreground text-center">Quad Standings</h2>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {Object.entries(standings.quads).map(([quadName, quadRecords]) => (
-                  <SimpleStandingsTable
-                    key={quadName}
-                    title={quadName}
-                    records={quadRecords as any[]}
-                    teamLookup={teamLookup}
-                    isSubTable
-                  />
-                ))}
+            {/* Quad Standings - Show First */}
+            {hasQuads && standings.quads && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-foreground text-center">Quad Standings</h2>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {Object.entries(standings.quads).map(([quadName, quadRecords]) => (
+                    <SimpleStandingsTable
+                      key={quadName}
+                      title={quadName}
+                      records={quadRecords as any[]}
+                      teamLookup={teamLookup}
+                      isSubTable
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Overall Standings - Show After Divisions/Quads */}
-          <StandingsDataTable 
-            title="Overall Standings"
-            records={standings.overall}
-            teamLookup={teamLookup}
-          />
-        </div>
+          {/* Overall Standings - Show After Divisions/Quads with extra spacing */}
+          <div className="pt-16">
+            <StandingsDataTable 
+              title="Overall Standings"
+              records={standings.overall}
+              teamLookup={teamLookup}
+            />
+          </div>
+        </>
       )}
     </div>
   );
