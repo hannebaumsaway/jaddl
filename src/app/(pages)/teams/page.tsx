@@ -81,7 +81,6 @@ function TeamsPageClient() {
               id="show-inactive" 
               checked={showInactive}
               onCheckedChange={setShowInactive}
-              className="data-[state=checked]:bg-black data-[state=unchecked]:bg-gray-200 data-[state=unchecked]:border data-[state=unchecked]:border-gray-300 [&>span]:border [&>span]:border-gray-300 [&>span]:bg-white"
             />
             <Label htmlFor="show-inactive" className="text-sm font-medium cursor-pointer">
               Show inactive teams
