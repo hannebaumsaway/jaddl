@@ -28,6 +28,8 @@ import {
   BarChartComponent, 
   PieChartComponent
 } from '@/components/ui/charts';
+import { PerformanceAreaChart } from '@/components/ui/performance-area-chart';
+import { WeeklyPerformanceAreaChart } from '@/components/ui/weekly-performance-area-chart';
 import { SeasonHistoryDataTable } from '@/components/pages/SeasonHistoryDataTable';
 import { RecentForm } from '@/components/pages/RecentForm';
 import { AchievementsCard } from '@/components/pages/AchievementsCard';
@@ -142,7 +144,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
       year: (record.year || 0).toString(),
       wins: record.wins,
       losses: record.losses,
-      winPercentage: record.win_percentage * 100,
+      winPercentage: record.win_percentage,
       pointsFor: record.points_for,
       pointsAgainst: record.points_against,
       pointDiff: record.points_for - record.points_against,
@@ -551,46 +553,10 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
       {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
         {/* Performance Over Time */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Performance Over Time
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChartComponent 
-              data={performanceData} 
-              xKey="year" 
-              yKey="winPercentage" 
-              color="#525252"
-            />
-            <p className="text-xs text-muted-foreground text-center mt-2 font-mono">
-              Win percentage by season
-            </p>
-          </CardContent>
-        </Card>
+        <PerformanceAreaChart data={performanceData} />
 
         {/* Weekly Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Activity className="h-5 w-5 mr-2" />
-              Weekly Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AreaChartComponent 
-              data={currentSeasonGames} 
-              xKey="week" 
-              yKey="teamScore" 
-              color="#525252"
-            />
-            <p className="text-xs text-muted-foreground text-center mt-2 font-mono">
-              Points scored by week
-            </p>
-          </CardContent>
-        </Card>
+        <WeeklyPerformanceAreaChart data={currentSeasonGames} />
       </div>
 
 

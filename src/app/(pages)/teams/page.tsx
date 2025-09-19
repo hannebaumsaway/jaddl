@@ -123,71 +123,71 @@ function TeamsPageClient() {
         {filteredTeams.map((team) => {
           const currentDivisionQuad = getCurrentDivisionQuad(team.teamId);
           return (
-          <Card key={team.id} className="hover:shadow-lg transition-shadow group">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    {team.logo ? (
-                      <Image
-                        src={team.logo.url}
-                        alt={`${team.teamName} logo`}
-                        width={48}
-                        height={48}
-                        className="rounded-lg"
-                      />
-                    ) : (
-                      <span className="text-3xl">🏈</span>
-                    )}
+          <Link key={team.id} href={`/teams/${team.teamId}`} className="block">
+            <Card className="hover:shadow-lg transition-shadow group cursor-pointer">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 flex items-center justify-center">
+                      {team.logo ? (
+                        <Image
+                          src={team.logo.url}
+                          alt={`${team.teamName} logo`}
+                          width={48}
+                          height={48}
+                          className="rounded-lg"
+                        />
+                      ) : (
+                        <span className="text-3xl">🏈</span>
+                      )}
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg group-hover:text-foreground transition-colors">
+                        {team.teamName}
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">{team.shortName}</div>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                      {team.teamName}
-                    </CardTitle>
-                    <div className="text-sm text-muted-foreground">{team.shortName}</div>
-                  </div>
+                  {team.active === false && (
+                    <div className="px-2 py-1 text-xs font-medium rounded-full border bg-muted text-muted-foreground">
+                      Inactive
+                    </div>
+                  )}
                 </div>
-                {team.active === false && (
-                  <div className="px-2 py-1 text-xs font-medium rounded-full border bg-muted text-muted-foreground">
-                    Inactive
+                {team.yearEstablished && (
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>Established {team.yearEstablished}</span>
                   </div>
                 )}
-              </div>
-              {team.yearEstablished && (
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Established {team.yearEstablished}</span>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Team information from Contentful */}
+                <div className="bg-muted rounded-lg p-3">
+                  <div className="text-sm font-medium text-foreground mb-2">
+                    Team Information
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div><span className="text-muted-foreground">Name:</span> {team.teamName}</div>
+                    <div><span className="text-muted-foreground">Short Name:</span> {team.shortName}</div>
+                    {currentDivisionQuad?.division && (
+                      <div><span className="text-muted-foreground">Division:</span> {currentDivisionQuad.division.division_name}</div>
+                    )}
+                    {currentDivisionQuad?.quad && (
+                      <div><span className="text-muted-foreground">Quad:</span> {currentDivisionQuad.quad.quad_name}</div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Team information from Contentful */}
-              <div className="bg-muted rounded-lg p-3">
-                <div className="text-sm font-medium text-foreground mb-2">
-                  Team Information
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div><span className="text-muted-foreground">Name:</span> {team.teamName}</div>
-                  <div><span className="text-muted-foreground">Short Name:</span> {team.shortName}</div>
-                  {currentDivisionQuad?.division && (
-                    <div><span className="text-muted-foreground">Division:</span> {currentDivisionQuad.division.division_name}</div>
-                  )}
-                  {currentDivisionQuad?.quad && (
-                    <div><span className="text-muted-foreground">Quad:</span> {currentDivisionQuad.quad.quad_name}</div>
-                  )}
-                </div>
-              </div>
 
-              {/* View Details Button */}
-              <div className="pt-2">
-                <Button variant="ghost" className="w-full group-hover:bg-muted" asChild>
-                  <a href={`/teams/${team.teamId}`}>
+                {/* View Details Button */}
+                <div className="pt-2">
+                  <Button variant="ghost" className="w-full group-hover:bg-muted">
                     View Team Details <ChevronRight className="h-4 w-4 ml-1" />
-                  </a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
           );
         })}
       </div>
