@@ -37,7 +37,14 @@ export function RecentForm({ games }: RecentFormProps) {
           {recentGames.length > 0 ? (
             <div className="flex justify-center items-center gap-1 sm:gap-2 md:gap-3 w-full">
               {recentGames.map((game, index) => {
-                const scoresUrl = `/scores?year=${game.year || new Date().getFullYear()}&week=${game.week}${game.isPlayoff ? '&playoffs=true' : ''}`;
+                const scoresUrl = {
+                  pathname: '/scores',
+                  query: {
+                    year: game.year || new Date().getFullYear(),
+                    week: game.week,
+                    ...(game.isPlayoff && { playoffs: 'true' })
+                  }
+                };
                 
                 return (
                   <Tooltip key={index}>
