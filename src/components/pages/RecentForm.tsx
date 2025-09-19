@@ -46,8 +46,8 @@ export function RecentForm({ games }: RecentFormProps) {
                         <div
                           className={`aspect-square rounded-lg flex items-center justify-center font-mono font-bold cursor-pointer w-full h-full hover:opacity-80 transition-opacity ${
                             game.result === 'W'
-                              ? 'bg-neutral-600 text-white'
-                              : 'bg-neutral-300 text-neutral-900'
+                              ? 'bg-emerald-600 dark:bg-emerald-500 text-white'
+                              : 'bg-rose-600 dark:bg-rose-500 text-white'
                           }`}
                         >
                           {game.result}

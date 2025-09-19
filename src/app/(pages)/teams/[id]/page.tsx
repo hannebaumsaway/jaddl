@@ -537,7 +537,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         <Card>
           <CardContent className="p-6 text-center">
             <div className={`text-3xl font-bold mb-2 font-mono ${
-              careerPointDiff > 0 ? 'text-green-600' : 'text-red-600'
+              careerPointDiff > 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'
             }`}>
               {careerPointDiff > 0 ? '+' : ''}
               {careerPointDiff.toFixed(0)}

@@ -190,7 +190,7 @@ export function SeasonHistoryDataTable({
 
         return (
           <div className={`text-center font-medium font-mono ${
-            isPositive ? 'text-green-600' : 'text-red-600'
+            isPositive ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'
           }`}>
             {display}
           </div>

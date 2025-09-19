@@ -3,6 +3,7 @@
 import { TrendingUp } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 
 import {
   Card,
@@ -34,16 +35,17 @@ interface PerformanceAreaChartProps {
 const chartConfig = {
   winPercentage: {
     label: "Win %",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   pointsFor: {
     label: "Points For",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig
 
 export function PerformanceAreaChart({ data }: PerformanceAreaChartProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const { theme } = useTheme();
 
   useEffect(() => {
     setIsMounted(true);
@@ -95,15 +97,15 @@ export function PerformanceAreaChart({ data }: PerformanceAreaChartProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <AreaChart
-            accessibilityLayer
-            data={data}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
+            <ChartContainer config={chartConfig} key={theme}>
+              <AreaChart
+                accessibilityLayer
+                data={data}
+                margin={{
+                  left: 12,
+                  right: 12,
+                }}
+              >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="year"

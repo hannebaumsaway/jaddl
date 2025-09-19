@@ -3,6 +3,7 @@
 import { Activity } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 
 import {
   Card,
@@ -34,12 +35,13 @@ interface WeeklyPerformanceAreaChartProps {
 const chartConfig = {
   teamScore: {
     label: "Points Scored",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig
 
 export function WeeklyPerformanceAreaChart({ data }: WeeklyPerformanceAreaChartProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const { theme } = useTheme();
 
   useEffect(() => {
     setIsMounted(true);
@@ -97,15 +99,15 @@ export function WeeklyPerformanceAreaChart({ data }: WeeklyPerformanceAreaChartP
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <AreaChart
-            accessibilityLayer
-            data={data}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
+            <ChartContainer config={chartConfig} key={theme}>
+              <AreaChart
+                accessibilityLayer
+                data={data}
+                margin={{
+                  left: 12,
+                  right: 12,
+                }}
+              >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="week"
