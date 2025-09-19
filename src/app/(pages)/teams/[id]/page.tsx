@@ -598,7 +598,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
       )}
 
       {/* Trophy Case */}
-      {trophyCase.length > 0 && (
+      {trophyCase.filter(trophy => trophy.trophy_id !== 6).length > 0 && (
         <div className="mb-8">
           <Card>
             <CardHeader>
@@ -611,6 +611,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
               <TooltipProvider>
                 <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-4">
                   {trophyCase
+                    .filter(trophy => trophy.trophy_id !== 6) // Exclude "briefly badasses" trophies
                     .sort((a, b) => a.trophy_id - b.trophy_id) // Order by trophy_id ascending
                     .map((trophy, index) => (
                       <Tooltip key={index}>
@@ -644,39 +645,6 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         </div>
       )}
 
-      {/* Recent Games */}
-      {currentSeasonGames.length > 0 && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Zap className="h-5 w-5 mr-2" />
-              Recent Games
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {currentSeasonGames.slice(-5).reverse().map((game, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Badge variant="outline">
-                      {game.isPlayoff ? `Playoff W${game.week}` : `W${game.week}`}
-                    </Badge>
-                    <span className="text-sm">vs {game.opponent}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium font-mono">
-                      {game.teamScore} - {game.oppScore}
-                    </span>
-                    <Badge variant={game.result === 'W' ? 'default' : 'secondary'}>
-                      {game.result}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
 
       {/* Season History Table */}
