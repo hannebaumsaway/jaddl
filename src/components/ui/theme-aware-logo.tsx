@@ -1,7 +1,6 @@
-'use client';
-
 import React from 'react';
-import { useTheme } from 'next-themes';
+import { ThemeAwareWordmark } from './ThemeAwareWordmark';
+import { ThemeAwareLogo as ThemeAwareLogoComponent } from './ThemeAwareLogo';
 
 interface ThemeAwareLogoProps {
   type: 'wordmark' | 'logo';
@@ -16,22 +15,13 @@ export function ThemeAwareLogo({
   style = {}, 
   alt = 'JADDL' 
 }: ThemeAwareLogoProps) {
-  const { theme } = useTheme();
+  if (type === 'wordmark') {
+    return <ThemeAwareWordmark className={className} style={style} />;
+  }
   
-  const getLogoSrc = () => {
-    if (type === 'wordmark') {
-      return theme === 'dark' ? "/images/jaddl-nav-wordmark.svg" : "/images/jaddl-nav-wordmark-dark.svg";
-    } else {
-      return theme === 'dark' ? "/images/jaddl-nav-logo.svg" : "/images/jaddl-nav-logo-dark.svg";
-    }
-  };
-
-  return (
-    <img
-      src={getLogoSrc()}
-      alt={alt}
-      className={className}
-      style={style}
-    />
-  );
+  if (type === 'logo') {
+    return <ThemeAwareLogoComponent className={className} style={style} />;
+  }
+  
+  return null;
 }

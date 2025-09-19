@@ -209,22 +209,6 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
             </p>
           )}
 
-          {/* Tags */}
-          {article.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-6">
-            {article.tags.map((tag) => (
-              <Link key={tag} href={`/news?tag=${encodeURIComponent(tag)}`}>
-                <Badge
-                  variant="outline"
-                  className="text-sm flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer [text-transform:lowercase!important]"
-                >
-                  <Tag className="h-3 w-3" />
-                  {tag}
-                </Badge>
-              </Link>
-            ))}
-            </div>
-          )}
         </header>
 
         <Separator className="mb-8" />
@@ -256,6 +240,25 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
         <article className="max-w-none">
           {article.content && documentToReactComponents(article.content, richTextOptions)}
         </article>
+
+        {/* Tags */}
+        {article.tags.length > 0 && (
+          <div className="mt-8 pt-6 border-t">
+            <div className="flex flex-wrap gap-2">
+              {article.tags.map((tag) => (
+                <Link key={tag} href={`/news?tag=${encodeURIComponent(tag)}`}>
+                  <Badge
+                    variant="outline"
+                    className="text-sm flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer [text-transform:lowercase!important]"
+                  >
+                    <Tag className="h-3 w-3" />
+                    {tag}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="mt-12 pt-8 border-t">

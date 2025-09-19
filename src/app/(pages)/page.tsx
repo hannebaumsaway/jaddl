@@ -16,6 +16,7 @@ import { getCurrentSeason, calculateStandings, getTeams } from '@/lib/supabase/a
 import { supabase } from '@/lib/supabase/client';
 import { SimpleStandingsTable } from '@/components/standings/SimpleStandingsTable';
 import { enrichTeamsWithSupabaseData } from '@/lib/utils/team-mapping';
+import { generateArticleSlug } from '@/lib/utils/slug';
 
 export const metadata: Metadata = {
   title: 'Home',
@@ -98,7 +99,7 @@ export default async function HomePage() {
              {recentArticles.map((article) => (
                <Link 
                  key={article.id} 
-                 href={`/news/${article.year}-week-${article.week}-${article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`}
+                 href={`/news/${generateArticleSlug(article.title, article.year, article.week)}`}
                  className="block"
                >
                  <Card className="hover:shadow-md transition-shadow overflow-hidden p-0 cursor-pointer">

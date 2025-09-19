@@ -22,9 +22,9 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground",
         league:
-          "bg-primary text-primary-foreground hover:bg-primary/90",
+          "bg-foreground text-background hover:bg-foreground/90",
         "league-outline":
-          "border border-primary text-primary hover:bg-primary hover:text-primary-foreground",
+          "border border-foreground text-foreground hover:bg-primary hover:text-primary-foreground",
       },
       size: {
         default: "h-10 px-4 py-2",

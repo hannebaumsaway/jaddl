@@ -39,12 +39,18 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold tracking-tight text-center">
-        {title}
-      </h3>
       <div className="overflow-x-auto" ref={scrollContainerRef}>
         <Table className="min-w-[600px]">
+          {/* Title Header Row */}
           <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableRow>
+              <TableHead 
+                colSpan={6} 
+                className="text-center text-lg font-semibold tracking-tight bg-muted border-b-2"
+              >
+                {title}
+              </TableHead>
+            </TableRow>
             <TableRow>
               <TableHead className="text-left w-10">#</TableHead>
               <TableHead className="text-left w-32 sticky left-0 z-20 bg-card">Team</TableHead>
