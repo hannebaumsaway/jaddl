@@ -424,7 +424,7 @@ export default async function ScoresPage({
 
       {/* Games Grid */}
       {hasGames ? (
-        <div className={isHeadToHead ? "space-y-4" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
+        <div className={isHeadToHead ? "space-y-2" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
           {enhancedGames.map((game) => (
             <Card key={game.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-col space-y-1.5 p-6 pb-4">
