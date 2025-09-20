@@ -487,7 +487,7 @@ export default async function ScoresPage({
                     </div>
                     
                     {/* VS Separator */}
-                    <div className="px-4 text-sm text-muted-foreground font-medium text-center md:text-left">VS</div>
+                    <div className="px-2 md:px-4 text-sm text-muted-foreground font-medium text-center md:text-left">VS</div>
                     
                     {/* Home Team (Right) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
