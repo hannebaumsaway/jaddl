@@ -122,7 +122,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 dataKey="wins"
                 stackId="a"
                 fill="var(--color-wins)"
-                radius={[5, 5, 0, 0]}
+                radius={[0, 0, 0, 0]}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
@@ -130,7 +130,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 dataKey="losses"
                 stackId="a"
                 fill="var(--color-losses)"
-                radius={[0, 0, 5, 5]}
+                radius={[0, 0, 0, 0]}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
