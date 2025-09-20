@@ -122,7 +122,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 dataKey="wins"
                 stackId="a"
                 fill="var(--color-wins)"
-                radius={[0, 0, 0, 0]}
+                radius={[0, 0, 5, 5]}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
