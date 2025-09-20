@@ -88,83 +88,103 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} key={theme} className="h-[390px] w-full">
-          <BarChart
-            accessibilityLayer
-            data={data}
-            layout={isMobile ? "horizontal" : "vertical"}
-            margin={isMobile ? {
-              top: 8,
-              bottom: 8,
-              left: 80,
-              right: 8,
-            } : {
-              left: 8,
-              right: 8,
-            }}
-          >
-            <CartesianGrid vertical={!isMobile} horizontal={isMobile} />
-            {isMobile ? (
-              // Mobile: Horizontal layout
-              <>
-                <XAxis
-                  type="number"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={4}
-                  domain={[0, 30]}
-                  tick={{ fontSize: 10 }}
-                  width={30}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="opponent"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  width={80}
-                  tick={{ fontSize: 12 }}
-                />
-              </>
-            ) : (
-              // Desktop: Vertical layout
-              <>
-                <XAxis
-                  dataKey="opponent"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={2}
-                  domain={[0, 30]}
-                  tick={{ fontSize: 10 }}
-                  width={20}
-                />
-              </>
-            )}
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Bar
-              dataKey="wins"
-              stackId="a"
-              fill="var(--color-wins)"
-              radius={isMobile ? [0, 0, 0, 0] : [0, 0, 0, 0]}
-              onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
-              style={{ cursor: onBarClick ? 'pointer' : 'default' }}
-            />
-            <Bar
-              dataKey="losses"
-              stackId="a"
-              fill="var(--color-losses)"
-              radius={isMobile ? [0, 0, 0, 0] : [4, 4, 0, 0]}
-              onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
-              style={{ cursor: onBarClick ? 'pointer' : 'default' }}
-            />
-          </BarChart>
+          {isMobile ? (
+            // Mobile: Horizontal bars
+            <BarChart
+              accessibilityLayer
+              data={data}
+              layout="horizontal"
+              margin={{
+                top: 8,
+                bottom: 8,
+                left: 80,
+                right: 8,
+              }}
+            >
+              <CartesianGrid horizontal={true} />
+              <XAxis
+                type="number"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={4}
+                domain={[0, 30]}
+                tick={{ fontSize: 10 }}
+                width={30}
+              />
+              <YAxis
+                type="category"
+                dataKey="opponent"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                width={80}
+                tick={{ fontSize: 12 }}
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Bar
+                dataKey="wins"
+                stackId="a"
+                fill="var(--color-wins)"
+                radius={[0, 0, 0, 0]}
+                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+              />
+              <Bar
+                dataKey="losses"
+                stackId="a"
+                fill="var(--color-losses)"
+                radius={[0, 0, 0, 0]}
+                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+              />
+            </BarChart>
+          ) : (
+            // Desktop: Vertical bars
+            <BarChart
+              accessibilityLayer
+              data={data}
+              margin={{
+                left: 8,
+                right: 8,
+              }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="opponent"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={2}
+                domain={[0, 30]}
+                tick={{ fontSize: 10 }}
+                width={20}
+              />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <Bar
+                dataKey="wins"
+                stackId="a"
+                fill="var(--color-wins)"
+                radius={[0, 0, 0, 0]}
+                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+              />
+              <Bar
+                dataKey="losses"
+                stackId="a"
+                fill="var(--color-losses)"
+                radius={[4, 4, 0, 0]}
+                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+              />
+            </BarChart>
+          )}
         </ChartContainer>
       </CardContent>
     </Card>
