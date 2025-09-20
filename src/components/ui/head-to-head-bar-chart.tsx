@@ -102,7 +102,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
               data={data}
               layout="vertical"
               margin={{
-                left: -20,
+                left: 20,
               }}
             >
               <XAxis type="number" dataKey="total" hide />
@@ -122,7 +122,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 dataKey="wins"
                 stackId="a"
                 fill="var(--color-wins)"
-                radius={5}
+                radius={[0, 0, 0, 0]}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
@@ -130,7 +130,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 dataKey="losses"
                 stackId="a"
                 fill="var(--color-losses)"
-                radius={5}
+                radius={[5, 5, 0, 0]}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
