@@ -98,8 +98,10 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
             <YAxis
               tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              tickMargin={4}
               domain={[0, 30]}
+              tick={{ fontSize: 12 }}
+              width={30}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <Bar
