@@ -60,6 +60,13 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Debug: Log data to console
+  useEffect(() => {
+    if (isMounted && data.length > 0) {
+      console.log('Head-to-head chart data:', data);
+    }
+  }, [isMounted, data]);
+
   if (!isMounted) {
     return (
       <Card>
@@ -126,7 +133,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 stackId="a"
                 fill="var(--color-wins)"
                 radius={[0, 0, 0, 0]}
-                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
               <Bar
@@ -134,7 +141,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 stackId="a"
                 fill="var(--color-losses)"
                 radius={[0, 0, 0, 0]}
-                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
             </BarChart>
@@ -172,7 +179,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 stackId="a"
                 fill="var(--color-wins)"
                 radius={[0, 0, 0, 0]}
-                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
               <Bar
@@ -180,7 +187,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 stackId="a"
                 fill="var(--color-losses)"
                 radius={[4, 4, 0, 0]}
-                onClick={(data) => onBarClick?.(data.opponent, data.opponentId)}
+                onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
             </BarChart>
