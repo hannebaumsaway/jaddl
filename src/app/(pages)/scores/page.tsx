@@ -456,8 +456,8 @@ export default async function ScoresPage({
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 {isHeadToHead ? (
-                  // Head-to-head layout: teams side by side
-                  <div className="flex items-center justify-between">
+                  // Head-to-head layout: teams side by side on desktop, stacked on mobile
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                     {/* Away Team (Left) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
                       game.away_score > game.home_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
@@ -487,7 +487,7 @@ export default async function ScoresPage({
                     </div>
                     
                     {/* VS Separator */}
-                    <div className="px-4 text-sm text-muted-foreground font-medium">VS</div>
+                    <div className="px-4 text-sm text-muted-foreground font-medium text-center md:text-left">VS</div>
                     
                     {/* Home Team (Right) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
