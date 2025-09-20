@@ -81,8 +81,8 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
             accessibilityLayer
             data={data}
             margin={{
-              left: 12,
-              right: 12,
+              left: 8,
+              right: 8,
             }}
           >
             <CartesianGrid vertical={false} />
@@ -98,10 +98,10 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
             <YAxis
               tickLine={false}
               axisLine={false}
-              tickMargin={4}
+              tickMargin={2}
               domain={[0, 30]}
-              tick={{ fontSize: 12 }}
-              width={30}
+              tick={{ fontSize: 10 }}
+              width={20}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <Bar
