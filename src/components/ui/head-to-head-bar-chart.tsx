@@ -96,43 +96,33 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
       <CardContent>
         <ChartContainer config={chartConfig} key={theme} className="h-[390px] w-full">
           {isMobile ? (
-            // Mobile: Horizontal bars
+            // Mobile: Horizontal bars (following shadcn pattern)
             <BarChart
               accessibilityLayer
               data={data}
-              layout="horizontal"
+              layout="vertical"
               margin={{
-                top: 8,
-                bottom: 8,
-                left: 80,
-                right: 8,
+                left: -20,
               }}
             >
-              <CartesianGrid horizontal={true} />
-              <XAxis
-                type="number"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={4}
-                domain={[0, 30]}
-                tick={{ fontSize: 10 }}
-                width={30}
-              />
+              <XAxis type="number" dataKey="total" hide />
               <YAxis
-                type="category"
                 dataKey="opponent"
+                type="category"
                 tickLine={false}
+                tickMargin={10}
                 axisLine={false}
-                tickMargin={8}
-                width={80}
-                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => value.slice(0, 8)}
               />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel />}
+              />
               <Bar
                 dataKey="wins"
                 stackId="a"
                 fill="var(--color-wins)"
-                radius={[0, 0, 0, 0]}
+                radius={5}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
@@ -140,7 +130,7 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 dataKey="losses"
                 stackId="a"
                 fill="var(--color-losses)"
-                radius={[0, 0, 0, 0]}
+                radius={5}
                 onClick={(data, index, event) => onBarClick?.(data.payload?.opponent, data.payload?.opponentId)}
                 style={{ cursor: onBarClick ? 'pointer' : 'default' }}
               />
@@ -155,7 +145,6 @@ export function HeadToHeadBarChart({ data, currentTeamId, onBarClick }: HeadToHe
                 right: 8,
               }}
             >
-              <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="opponent"
                 tickLine={false}
