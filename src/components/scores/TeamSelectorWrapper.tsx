@@ -23,7 +23,7 @@ export function TeamSelectorWrapper({ teams, team1Id, team2Id }: TeamSelectorWra
   };
 
   return (
-    <div className="flex items-center justify-center gap-8 mt-6">
+    <div className="flex items-center justify-center gap-4 mt-6">
       {/* Team 1 Selector */}
       <div className="flex-1 max-w-xs">
         <TeamSelector
