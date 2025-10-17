@@ -31,9 +31,46 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     };
   }
 
+  // Build a rich description
+  const weekType = article.isPlayoff ? 
+    (article.week === 13 ? 'Quarterfinals' : 
+     article.week === 14 ? 'Semifinals' : 
+     article.week === 15 ? 'Championship' : 
+     `Playoff Week ${article.week}`) : 
+    `Week ${article.week}`;
+
+  const description = article.subtitle || 
+    `${article.year} Season ${weekType} recap` + 
+    (article.featuredTeams.length > 0 ? 
+      ` featuring ${article.featuredTeams.map(t => t.teamName).join(' and ')}` : 
+      '');
+
   return {
     title: `${article.title} - JADDL News`,
-    description: article.subtitle || `JADDL article from ${article.year} Week ${article.week}`,
+    description,
+    openGraph: {
+      title: article.title,
+      description,
+      siteName: 'JADDL Fantasy Football League',
+      type: 'article',
+      images: article.featuredImage ? [
+        {
+          url: article.featuredImage.url,
+          width: article.featuredImage.width,
+          height: article.featuredImage.height,
+          alt: article.featuredImage.alt || article.title,
+        }
+      ] : undefined,
+      publishedTime: new Date(article.year, 0, 1).toISOString(), // Use Jan 1st of the article year
+      modifiedTime: new Date(article.year, 0, 1).toISOString(),
+      tags: article.tags,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description,
+      images: article.featuredImage ? [article.featuredImage.url] : undefined,
+    },
   };
 }
 
