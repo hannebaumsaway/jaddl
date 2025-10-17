@@ -191,6 +191,7 @@ export interface TeamRecord {
   quad_wins?: number;
   quad_losses?: number;
   quad_ties?: number;
+  streak?: string; // Current streak (e.g., "W3", "L2")
 }
 
 export interface Standings {

@@ -57,7 +57,7 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
               <TableHead className="text-center w-36 whitespace-nowrap">Record</TableHead>
               <TableHead className="text-center font-mono w-20">PF</TableHead>
               <TableHead className="text-center font-mono w-20">PA</TableHead>
-              <TableHead className="text-center font-mono w-20">+/-</TableHead>
+              <TableHead className="text-center font-mono w-20">Streak</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -120,10 +120,10 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
                       {record.points_against.toFixed(1)}
                     </TableCell>
                     <TableCell className={`text-center font-mono font-semibold ${
-                      record.point_differential > 0 ? 'text-green-600' : 
-                      record.point_differential < 0 ? 'text-red-600' : 'text-foreground'
+                      record.streak?.startsWith('W') ? 'text-emerald-600 dark:text-emerald-500' : 
+                      record.streak?.startsWith('L') ? 'text-rose-600 dark:text-rose-500' : 'text-foreground'
                     }`}>
-                      {record.point_differential > 0 ? '+' : ''}{record.point_differential.toFixed(1)}
+                      {record.streak || '-'}
                     </TableCell>
                   </TableRow>
                 );

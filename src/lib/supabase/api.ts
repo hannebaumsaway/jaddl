@@ -424,11 +424,51 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
       }
     });
 
-    // Calculate win percentages and point differentials
+    // Calculate win percentages, point differentials, and streaks
     teamRecords.forEach(record => {
       const totalGames = record.wins + record.losses + record.ties;
       record.win_percentage = totalGames > 0 ? (record.wins + record.ties * 0.5) / totalGames : 0;
       record.point_differential = record.points_for - record.points_against;
+      
+      // Calculate current streak
+      const teamGames = games
+        .filter(g => 
+          (g.home_team_id === record.team_id || g.away_team_id === record.team_id) &&
+          g.home_score !== null && 
+          g.away_score !== null
+        )
+        .sort((a, b) => a.week - b.week); // Sort by week ascending
+      
+      let streak = 0;
+      let streakType: 'W' | 'L' | 'T' | null = null;
+      
+      // Loop backwards through games to find current streak
+      for (let i = teamGames.length - 1; i >= 0; i--) {
+        const game = teamGames[i];
+        const isHome = game.home_team_id === record.team_id;
+        const teamScore = isHome ? game.home_score! : game.away_score!;
+        const oppScore = isHome ? game.away_score! : game.home_score!;
+        
+        let result: 'W' | 'L' | 'T';
+        if (teamScore > oppScore) {
+          result = 'W';
+        } else if (teamScore < oppScore) {
+          result = 'L';
+        } else {
+          result = 'T';
+        }
+        
+        if (streakType === null) {
+          streakType = result;
+          streak = 1;
+        } else if (streakType === result) {
+          streak++;
+        } else {
+          break; // Streak is broken
+        }
+      }
+      
+      record.streak = streakType ? `${streakType}${streak}` : '-';
     });
 
     // Filter out teams with 0 games (not part of league that year)

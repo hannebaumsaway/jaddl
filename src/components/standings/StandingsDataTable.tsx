@@ -47,8 +47,7 @@ export interface StandingsTableRow {
   winPercentage: string;
   pointsFor: string;
   pointsAgainst: string;
-  pointDifferential: number;
-  pointDifferentialDisplay: string;
+  streak: string;
 }
 
 export function StandingsDataTable({
@@ -82,10 +81,7 @@ export function StandingsDataTable({
         winPercentage: record.win_percentage.toFixed(1),
         pointsFor: record.points_for.toFixed(1),
         pointsAgainst: record.points_against.toFixed(1),
-        pointDifferential: record.point_differential,
-        pointDifferentialDisplay: record.point_differential > 0 
-          ? `+${record.point_differential.toFixed(1)}`
-          : record.point_differential.toFixed(1),
+        streak: record.streak || '-',
       };
     }),
     [records, teamLookup]
@@ -375,36 +371,21 @@ export function StandingsDataTable({
       },
     },
     {
-      accessorKey: 'pointDifferential',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="h-8 px-2 font-mono"
-        >
-          +/-
-          {column.getIsSorted() === 'asc' ? (
-            <ChevronUp className="ml-1 h-3 w-3" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ChevronDown className="ml-1 h-3 w-3" />
-          ) : (
-            <ArrowUpDown className="ml-1 h-3 w-3" />
-          )}
-        </Button>
-      ),
+      accessorKey: 'streak',
+      header: 'Streak',
       cell: ({ row }) => {
-        const value = row.original.pointDifferential;
-        const display = row.original.pointDifferentialDisplay;
-        const isPositive = value > 0;
-
+        const streak = row.getValue('streak') as string;
+        
         return (
           <div className={`text-center font-mono font-semibold ${
-            isPositive ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-foreground'
+            streak.startsWith('W') ? 'text-emerald-600 dark:text-emerald-500' : 
+            streak.startsWith('L') ? 'text-rose-600 dark:text-rose-500' : 'text-foreground'
           }`}>
-            {display}
+            {streak}
           </div>
         );
       },
+      enableSorting: false,
     },
   ];
 
