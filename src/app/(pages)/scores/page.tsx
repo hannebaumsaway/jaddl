@@ -55,7 +55,8 @@ export default async function ScoresPage({
   
   // Get team filtering parameters
   const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
-  const team2Id = searchParams.team2 ? parseInt(searchParams.team2) : null;
+  const team2Id = searchParams.team2 && searchParams.team2 !== 'all' ? parseInt(searchParams.team2) : null;
+  const isAllGames = team1Id && searchParams.team2 === 'all';
   const isHeadToHead = team1Id && team2Id;
 
   // Fetch teams from Contentful for logos/names
@@ -64,7 +65,10 @@ export default async function ScoresPage({
   // Fetch actual games from Supabase
   let query = supabase.from('games').select('*');
   
-  if (isHeadToHead) {
+  if (isAllGames) {
+    // For all games of a single team, show all games across all years in descending order
+    query = query.or(`home_team_id.eq.${team1Id},away_team_id.eq.${team1Id}`);
+  } else if (isHeadToHead) {
     // For head-to-head, show all games between the two teams across all years
     query = query.or(`and(home_team_id.eq.${team1Id},away_team_id.eq.${team2Id}),and(home_team_id.eq.${team2Id},away_team_id.eq.${team1Id})`);
   } else {
@@ -171,9 +175,13 @@ export default async function ScoresPage({
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-foreground mb-4">
-          {isHeadToHead ? 'Head-to-Head Matchups' : 'Weekly Scores'}
+          {isAllGames ? 'All Team Scores' : isHeadToHead ? 'Head-to-Head Matchups' : 'Weekly Scores'}
         </h1>
-        {isHeadToHead ? (
+        {isAllGames ? (
+          <div className="px-4 py-2 font-semibold mt-2">
+            {contentfulTeams.find(t => t.teamId === team1Id)?.teamName || 'Unknown Team'} - All Historical Games
+          </div>
+        ) : isHeadToHead ? (
           <TeamSelectorWrapper
             teams={contentfulTeams}
             team1Id={team1Id}
@@ -195,17 +203,214 @@ export default async function ScoresPage({
         )}
       </div>
 
-      {/* Back button for head-to-head view */}
-      {isHeadToHead && (
+      {/* Back button for head-to-head and all games view */}
+      {(isHeadToHead || isAllGames) && (
         <div className="mb-6 text-center">
           <Link 
-            href="/scores" 
+            href={isAllGames && team1Id ? `/teams/${team1Id}` : "/scores"}
             className="inline-flex items-center px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            ← Back to Weekly Scores
+            ← {isAllGames ? 'Back to Team Page' : 'Back to Weekly Scores'}
           </Link>
         </div>
       )}
+
+      {/* All Games Summary Stats */}
+      {isAllGames && (() => {
+        const team = contentfulTeams.find(t => t.teamId === team1Id);
+        
+        if (!team) return null;
+
+        // Calculate all games statistics
+        const allTeamGames = enhancedGames.filter(game => 
+          game.home_team_id === team1Id || game.away_team_id === team1Id
+        );
+
+        if (allTeamGames.length === 0) return null;
+
+        // Calculate wins and losses
+        const wins = allTeamGames.filter(game => {
+          const isHome = game.home_team_id === team1Id;
+          return isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
+        }).length;
+
+        const losses = allTeamGames.length - wins;
+
+        // Calculate total points for and against
+        const totalPointsFor = allTeamGames.reduce((sum, game) => {
+          const isHome = game.home_team_id === team1Id;
+          return sum + (isHome ? game.home_score : game.away_score);
+        }, 0);
+
+        const totalPointsAgainst = allTeamGames.reduce((sum, game) => {
+          const isHome = game.home_team_id === team1Id;
+          return sum + (isHome ? game.away_score : game.home_score);
+        }, 0);
+
+        const avgPointsFor = totalPointsFor / allTeamGames.length;
+        const avgPointsAgainst = totalPointsAgainst / allTeamGames.length;
+
+        // Calculate longest winning and losing streaks
+        const calculateStreaks = (games: any[]) => {
+          let longestWinStreak = 0;
+          let longestLoseStreak = 0;
+          let currentWinStreak = 0;
+          let currentLoseStreak = 0;
+          let winStreakStart: any = null;
+          let winStreakEnd: any = null;
+          let loseStreakStart: any = null;
+          let loseStreakEnd: any = null;
+          let currentWinStart: any = null;
+          let currentLoseStart: any = null;
+
+          // Sort games by year and week (oldest to newest for streak calculation)
+          const sortedGames = [...games].sort((a, b) => {
+            if (a.year !== b.year) return a.year - b.year;
+            if (a.playoffs !== b.playoffs) return a.playoffs ? 1 : -1;
+            return a.week - b.week;
+          });
+
+          sortedGames.forEach(game => {
+            const isHome = game.home_team_id === team1Id;
+            const won = isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
+
+            if (won) {
+              if (currentWinStreak === 0) {
+                currentWinStart = game;
+              }
+              currentWinStreak++;
+              currentLoseStreak = 0;
+              currentLoseStart = null;
+              
+              if (currentWinStreak > longestWinStreak) {
+                longestWinStreak = currentWinStreak;
+                winStreakStart = currentWinStart;
+                winStreakEnd = game;
+              }
+            } else {
+              if (currentLoseStreak === 0) {
+                currentLoseStart = game;
+              }
+              currentLoseStreak++;
+              currentWinStreak = 0;
+              currentWinStart = null;
+              
+              if (currentLoseStreak > longestLoseStreak) {
+                longestLoseStreak = currentLoseStreak;
+                loseStreakStart = currentLoseStart;
+                loseStreakEnd = game;
+              }
+            }
+          });
+
+          return { 
+            longestWinStreak, 
+            longestLoseStreak,
+            winStreakStart,
+            winStreakEnd,
+            loseStreakStart,
+            loseStreakEnd
+          };
+        };
+
+        const { 
+          longestWinStreak, 
+          longestLoseStreak,
+          winStreakStart,
+          winStreakEnd,
+          loseStreakStart,
+          loseStreakEnd
+        } = calculateStreaks(allTeamGames);
+
+        // Separate regular season and playoff games
+        const regularSeasonGames = allTeamGames.filter(game => !game.playoffs);
+        const playoffGames = allTeamGames.filter(game => game.playoffs);
+
+        const regularWins = regularSeasonGames.filter(game => {
+          const isHome = game.home_team_id === team1Id;
+          return isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
+        }).length;
+
+        const playoffWins = playoffGames.filter(game => {
+          const isHome = game.home_team_id === team1Id;
+          return isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
+        }).length;
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {/* Overall Record */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {wins}-{losses}
+                </div>
+                <div className="text-sm text-muted-foreground">Overall Record</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {((wins / allTeamGames.length) * 100).toFixed(1)}% Win Rate
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Games */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {allTeamGames.length}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Games</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {regularSeasonGames.length} regular, {playoffGames.length} playoff
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Average Points */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="text-2xl font-bold text-foreground mb-2 font-mono">
+                  {avgPointsFor.toFixed(1)}
+                </div>
+                <div className="text-sm text-muted-foreground">Avg Points For</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {avgPointsAgainst.toFixed(1)} against
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Longest Streaks */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="flex items-center justify-center gap-4 mb-2">
+                  <div className="flex-1">
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500 font-mono">
+                      {longestWinStreak}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Winning</div>
+                    {winStreakStart && winStreakEnd && (
+                      <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                        {winStreakStart.year} Wk{winStreakStart.week} - {winStreakEnd.year} Wk{winStreakEnd.week}
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-l border-border h-16"></div>
+                  <div className="flex-1">
+                    <div className="text-2xl font-bold text-rose-600 dark:text-rose-500 font-mono">
+                      {longestLoseStreak}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Losing</div>
+                    {loseStreakStart && loseStreakEnd && (
+                      <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                        {loseStreakStart.year} Wk{loseStreakStart.week} - {loseStreakEnd.year} Wk{loseStreakEnd.week}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">Longest Streaks</div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Head-to-Head Summary Stats */}
       {isHeadToHead && (() => {
@@ -348,7 +553,7 @@ export default async function ScoresPage({
         );
       })()}
 
-      {!isHeadToHead && (
+      {!isHeadToHead && !isAllGames && (
         <NavigationControls 
           seasonYear={seasonYear}
           currentWeek={currentWeek}
@@ -359,7 +564,7 @@ export default async function ScoresPage({
       )}
 
       {/* Week Stats - Only show for weekly view */}
-      {!isHeadToHead && (
+      {!isHeadToHead && !isAllGames && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <Card>
           <CardContent className="p-6 text-center">
@@ -424,13 +629,13 @@ export default async function ScoresPage({
 
       {/* Games Grid */}
       {hasGames ? (
-        <div className={isHeadToHead ? "space-y-2" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
+        <div className={(isHeadToHead || isAllGames) ? "space-y-2" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
           {enhancedGames.map((game) => (
             <Card key={game.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="flex flex-col space-y-1.5 p-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    {isHeadToHead ? (
+                    {(isHeadToHead || isAllGames) ? (
                       `${game.year} Season • ${game.playoffs ? 
                         (game.week === 1 ? 'Quarterfinals' : 
                          game.week === 2 ? 'Semifinals' : 
@@ -447,7 +652,7 @@ export default async function ScoresPage({
                         'Regular Season'
                     )}
                   </div>
-                  {!isHeadToHead && (
+                  {!isHeadToHead && !isAllGames && (
                     <div className="text-sm text-muted-foreground">
                       Game #{game.id}
                     </div>
@@ -455,7 +660,7 @@ export default async function ScoresPage({
                 </div>
               </CardHeader>
               <CardContent className="p-6 pt-0">
-                {isHeadToHead ? (
+                {(isHeadToHead || isAllGames) ? (
                   // Head-to-head layout: teams side by side on desktop, stacked on mobile
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                     {/* Away Team (Left) */}

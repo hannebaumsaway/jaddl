@@ -652,6 +652,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         <SeasonHistoryDataTable 
           title="Season History"
           data={historicalData}
+          teamId={team.teamId}
         />
       </div>
 

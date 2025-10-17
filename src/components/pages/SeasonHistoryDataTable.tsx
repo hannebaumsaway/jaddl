@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import {
   ColumnDef,
   SortingState,
@@ -34,11 +35,13 @@ export interface SeasonHistoryRow {
 interface SeasonHistoryDataTableProps {
   title: string;
   data: SeasonHistoryRow[];
+  teamId?: number;
 }
 
 export function SeasonHistoryDataTable({
   title,
   data,
+  teamId,
 }: SeasonHistoryDataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'year', desc: true } // Default sort by year descending
@@ -213,10 +216,19 @@ export function SeasonHistoryDataTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <BarChart3 className="h-5 w-5 mr-2" />
-          {title}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center">
+            <BarChart3 className="h-5 w-5 mr-2" />
+            {title}
+          </CardTitle>
+          {teamId && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/scores?team1=${teamId}&team2=all`}>
+                See all scores
+              </Link>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
