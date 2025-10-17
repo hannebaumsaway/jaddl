@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 
   const description = article.subtitle || 
     `${article.year} Season ${weekType} recap` + 
-    (article.featuredTeams.length > 0 ? 
+    (article.featuredTeams?.length > 0 ? 
       ` featuring ${article.featuredTeams.map(t => t.teamName).join(' and ')}` : 
       '');
 
