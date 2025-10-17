@@ -6,28 +6,13 @@ import {
   ArrowLeft, 
   Trophy, 
   Target, 
-  TrendingUp, 
   Star, 
-  Calendar,
-  Users,
-  Award,
-  Zap,
-  BarChart3,
-  Activity,
   Target as TargetIcon
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { 
-  LineChartComponent, 
-  AreaChartComponent, 
-  BarChartComponent, 
-  PieChartComponent
-} from '@/components/ui/charts';
 import { PerformanceAreaChart } from '@/components/ui/performance-area-chart';
 import { WeeklyPerformanceAreaChart } from '@/components/ui/weekly-performance-area-chart';
 import { SeasonHistoryDataTable } from '@/components/pages/SeasonHistoryDataTable';
@@ -38,7 +23,6 @@ import { CurvedText } from '@/components/ui/curved-text';
 
 import { getTeamProfiles } from '@/lib/contentful/api';
 import { 
-  getTeamRecords, 
   getAllTimeTeamRecords,
   getGames, 
   getTeamSeasons, 
@@ -47,7 +31,6 @@ import {
   getTrophyCase
 } from '@/lib/supabase/api';
 import { getTrophies } from '@/lib/contentful/api';
-import { TrophyCase } from '@/types/database';
 
 interface TeamDetailPageProps {
   params: {
@@ -62,7 +45,7 @@ export async function generateMetadata({ params }: TeamDetailPageProps): Promise
   if (!team) {
     return {
       title: 'Team Not Found',
-      description: 'The team you\'re looking for doesn\'t exist.',
+      description: 'The team you are looking for does not exist.',
     };
   }
 
@@ -117,7 +100,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Team Not Found</h1>
-        <p className="text-muted-foreground mb-4">The team you're looking for doesn't exist.</p>
+        <p className="text-muted-foreground mb-4">The team you are looking for does not exist.</p>
         <Button asChild>
           <Link href="/teams">Back to Teams</Link>
         </Button>
@@ -239,25 +222,6 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
       };
     });
 
-  // Calculate streaks and records
-  const calculateStreak = (games: any[]) => {
-    let currentStreak = 0;
-    let streakType = 'W';
-    
-    for (let i = games.length - 1; i >= 0; i--) {
-      if (games[i].result === 'W') {
-        if (streakType === 'W') currentStreak++;
-        else break;
-      } else if (games[i].result === 'L') {
-        if (streakType === 'L') currentStreak++;
-        else break;
-      }
-    }
-    
-    return { type: streakType, count: currentStreak };
-  };
-
-  const currentStreak = calculateStreak(currentSeasonGames.filter(g => g.result !== 'TBD'));
 
   // Calculate all-time career totals
   const careerTotals = allTeamRecordsForTeam.reduce((acc, record) => ({
@@ -359,7 +323,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     
     // Count how many times our team was the leader
     let count = 0;
-    yearlyLeaders.forEach((leader, year) => {
+    yearlyLeaders.forEach((leader) => {
       if (leader.teamId === team.teamId) {
         count++;
       }
@@ -395,12 +359,9 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     achievements.push({ title: 'Career Dominator', description: '500+ Career Point Diff', icon: '🚀', color: 'text-red-600' });
   }
 
-  // Find best and worst seasons
+  // Find best season
   const bestSeason = allTeamRecordsForTeam.reduce((best, current) => 
     (current.win_percentage || 0) > (best.win_percentage || 0) ? current : best
-  );
-  const worstSeason = allTeamRecordsForTeam.reduce((worst, current) => 
-    (current.win_percentage || 0) < (worst.win_percentage || 0) ? current : worst
   );
 
   // Get comprehensive historical performance data

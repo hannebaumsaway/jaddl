@@ -114,7 +114,7 @@ export default async function ScoresPage({
     }
   }
   
-  const { data: games, error } = await query.order('year', { ascending: false }).order('week', { ascending: false });
+  const { data: games } = await query.order('year', { ascending: false }).order('week', { ascending: false });
 
   const actualGames = games || [];
 
@@ -358,16 +358,6 @@ export default async function ScoresPage({
         // Separate regular season and playoff games
         const regularSeasonGames = allTeamGames.filter(game => !game.playoffs);
         const playoffGames = allTeamGames.filter(game => game.playoffs);
-
-        const regularWins = regularSeasonGames.filter(game => {
-          const isHome = game.home_team_id === team1Id;
-          return isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
-        }).length;
-
-        const playoffWins = playoffGames.filter(game => {
-          const isHome = game.home_team_id === team1Id;
-          return isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
-        }).length;
 
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
