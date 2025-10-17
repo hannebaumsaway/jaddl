@@ -66,9 +66,46 @@ export async function generateMetadata({ params }: TeamDetailPageProps): Promise
     };
   }
 
+  // Get team's achievements and stats for metadata
+  const trophyCaseData = await getTrophyCase(undefined, team.teamId);
+  const championshipTrophies = trophyCaseData.filter(trophy => trophy.trophy_id === 1);
+  const allTeamRecords = await getAllTimeTeamRecords();
+  const teamRecords = allTeamRecords.filter(r => r.team_id === team.teamId);
+  const careerTotals = teamRecords.reduce((acc, record) => ({
+    totalWins: acc.totalWins + record.wins,
+    totalLosses: acc.totalLosses + record.losses,
+    totalGames: acc.totalGames + record.wins + record.losses + (record.ties || 0),
+  }), { totalWins: 0, totalLosses: 0, totalGames: 0 });
+
+  const winRate = careerTotals.totalGames > 0 ? (careerTotals.totalWins / careerTotals.totalGames * 100).toFixed(1) : 0;
+  const championships = championshipTrophies.length;
+  const seasons = teamRecords.length;
+
+  const description = `${team.teamName} - ${careerTotals.totalWins}-${careerTotals.totalLosses} (${winRate}%) all-time record` + 
+    (championships > 0 ? `, ${championships} championship${championships > 1 ? 's' : ''}` : '') +
+    ` over ${seasons} season${seasons > 1 ? 's' : ''} in the JADDL fantasy football league.`;
+
   return {
     title: `${team.teamName} - Team Details`,
-    description: `Detailed information, stats, and history for ${team.teamName} in the JADDL fantasy football league.`,
+    description,
+    openGraph: {
+      title: `${team.teamName} - JADDL Fantasy Football`,
+      description,
+      images: team.logo?.url ? [
+        {
+          url: team.logo.url,
+          width: 240,
+          height: 240,
+          alt: `${team.teamName} logo`,
+        }
+      ] : undefined,
+    },
+    twitter: {
+      card: 'summary',
+      title: `${team.teamName} - JADDL Fantasy Football`,
+      description,
+      images: team.logo?.url ? [team.logo.url] : undefined,
+    },
   };
 }
 

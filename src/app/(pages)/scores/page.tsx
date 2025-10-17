@@ -10,34 +10,67 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import NavigationControls from '@/components/scores/NavigationControls';
 import { TeamSelectorWrapper } from '@/components/scores/TeamSelectorWrapper';
 
-export const metadata: Metadata = {
-  title: 'Scores | JADDL',
-  description: 'View weekly matchup scores and results for the JADDL fantasy football league.',
-  keywords: ['fantasy football', 'league', 'JADDL', 'sports', 'competition'],
-  authors: [{ name: 'JADDL Commissioner' }],
-  creator: 'JADDL League',
-  publisher: 'JADDL League',
-  robots: 'index, follow',
-  openGraph: {
-    title: 'JADDL Fantasy Football League',
-    description: 'The premier fantasy football league bringing together competitive players for an epic battle of strategy, skill, and a little bit of luck.',
-    siteName: 'JADDL Fantasy Football League',
-    images: [
-      {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'JADDL Fantasy Football League',
-      },
-    ],
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'JADDL Fantasy Football League',
-    description: 'The premier fantasy football league bringing together competitive players for an epic battle of strategy, skill, and a little bit of luck.',
-    images: ['/og-image.jpg'],
-  },
+export async function generateMetadata({ searchParams }: {
+  searchParams: { year?: string; week?: string; playoffs?: string; team1?: string; team2?: string };
+}): Promise<Metadata> {
+  // Get the most recent available week as default
+  const mostRecentWeek = await getMostRecentWeek();
+  const contentfulTeams = await getTeamProfiles();
+  
+  // Get year, week, and playoffs from URL params, defaulting to most recent week
+  const seasonYear = parseInt(searchParams.year || mostRecentWeek.year.toString());
+  const currentWeek = parseInt(searchParams.week || mostRecentWeek.week.toString());
+  const isPlayoffs = searchParams.playoffs === 'true' || (searchParams.playoffs === undefined && mostRecentWeek.isPlayoff);
+  
+  // Get team filtering parameters
+  const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
+  const team2Id = searchParams.team2 && searchParams.team2 !== 'all' ? parseInt(searchParams.team2) : null;
+  const isAllGames = team1Id && searchParams.team2 === 'all';
+  const isHeadToHead = team1Id && team2Id;
+
+  let title = 'Scores | JADDL';
+  let description = 'View weekly matchup scores and results for the JADDL fantasy football league.';
+
+  if (isAllGames) {
+    const team = contentfulTeams.find(t => t.teamId === team1Id);
+    if (team) {
+      title = `${team.teamName} - All Historical Games`;
+      description = `Complete game history and scores for ${team.teamName} in the JADDL fantasy football league.`;
+    }
+  } else if (isHeadToHead) {
+    const team1 = contentfulTeams.find(t => t.teamId === team1Id);
+    const team2 = contentfulTeams.find(t => t.teamId === team2Id);
+    if (team1 && team2) {
+      title = `${team1.teamName} vs ${team2.teamName} - Head-to-Head History`;
+      description = `Historical head-to-head matchups between ${team1.teamName} and ${team2.teamName} in the JADDL fantasy football league.`;
+    }
+  } else {
+    const weekType = isPlayoffs ? 
+      (currentWeek === 1 ? 'Quarterfinals' : 
+       currentWeek === 2 ? 'Semifinals' : 
+       currentWeek === 3 ? 'Championship' : 
+       `Playoff Week ${currentWeek}`) : 
+      `Week ${currentWeek}`;
+    title = `${seasonYear} ${weekType} Scores`;
+    description = `${seasonYear} Season ${weekType} matchup scores and results for the JADDL fantasy football league.`;
+  }
+
+  return {
+    title,
+    description,
+    keywords: ['fantasy football', 'league', 'JADDL', 'sports', 'competition'],
+    openGraph: {
+      title,
+      description,
+      siteName: 'JADDL Fantasy Football League',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+    },
+  };
 };
 
 export default async function ScoresPage({

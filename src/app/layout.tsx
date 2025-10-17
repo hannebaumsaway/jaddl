@@ -5,6 +5,11 @@ import { Analytics } from '@vercel/analytics/next';
 import { Header, Footer, ErrorBoundary } from '@/components/layout';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: {
     default: 'JADDL Fantasy Football League',
@@ -16,7 +21,6 @@ export const metadata: Metadata = {
   creator: 'JADDL League',
   publisher: 'JADDL League',
   robots: 'index, follow',
-  viewport: 'width=device-width, initial-scale=1',
   openGraph: {
     type: 'website',
     siteName: 'JADDL Fantasy Football League',
