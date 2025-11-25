@@ -248,7 +248,7 @@ export function ScoreImport() {
                 <SelectContent>
                   {weekOptions.map(week => (
                     <SelectItem key={week} value={week.toString()}>
-                      Week {week} {week >= 13 ? '(Playoffs)' : ''}
+                      Week {week} {week >= 15 ? '(Playoffs)' : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
