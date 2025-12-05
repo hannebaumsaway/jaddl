@@ -15,8 +15,10 @@ export async function GET(request: Request) {
     const week = parseInt(searchParams.get('week') || '') || null;
 
     // Get current week if not provided
-    let currentWeek = week;
-    if (!currentWeek) {
+    let currentWeek: number;
+    if (week !== null && week > 0) {
+      currentWeek = week;
+    } else {
       const { data } = await supabase
         .from('games')
         .select('week')
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
         .order('week', { ascending: false })
         .limit(1)
         .single();
-      currentWeek = data?.week || 1;
+      currentWeek = (data?.week ?? 1) as number;
     }
 
     // Get standings
