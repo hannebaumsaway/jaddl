@@ -24,26 +24,26 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
     return `${year} - Week ${week}`;
   };
 
-  const getWeekTypeColor = (week: number) => {
+  const getWeekTypeColor = (isPlayoff: boolean, week: number) => {
     if (week === 0) return 'bg-blue-100 text-blue-800';
-    if (week >= 13) return 'bg-purple-100 text-purple-800';
+    if (isPlayoff) return 'bg-purple-100 text-purple-800';
     return 'bg-green-100 text-green-800';
   };
 
-  const getWeekTypeLabel = (week: number) => {
+  const getWeekTypeLabel = (isPlayoff: boolean, week: number) => {
     if (week === 0) return 'PRESEASON';
-    if (week >= 13) return 'PLAYOFF';
-    return 'REGULAR';
+    if (isPlayoff) return 'PLAYOFF';
+    return 'REGULAR SEASON';
   };
 
   const articleSlug = generateArticleSlug(article.title, article.year, article.week);
 
   return (
-    <Card className={cn("hover:shadow-lg transition-all duration-200 group overflow-hidden cursor-pointer h-full flex flex-col", className)}>
+    <Card className={cn("hover:shadow-lg transition-all duration-200 group overflow-hidden cursor-pointer h-full flex flex-col p-0", className)}>
       <Link href={`/news/${articleSlug}`} className="block h-full flex flex-col">
         {/* Thumbnail Image */}
         {article.featuredImage && (
-          <div className="relative h-48 w-full overflow-hidden">
+          <div className="relative h-64 w-full overflow-hidden">
             <Image
               src={article.featuredImage.url}
               alt={article.featuredImage.alt || article.title}
@@ -56,13 +56,13 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
           </div>
         )}
         
-        <CardHeader className={cn("pb-3", article.featuredImage && "pt-4")}>
+        <CardHeader className={cn("pb-3 px-6 pt-4", article.featuredImage && "pt-4")}>
           <div className="flex items-center justify-between mb-2">
             <Badge 
               variant="secondary" 
-              className={cn("text-xs font-normal font-mono", getWeekTypeColor(article.week))}
+              className={cn("text-xs font-normal font-mono", getWeekTypeColor(article.isPlayoff, article.week))}
             >
-              {getWeekTypeLabel(article.week)}
+              {getWeekTypeLabel(article.isPlayoff, article.week)}
             </Badge>
             <div className="flex items-center text-sm text-muted-foreground font-mono font-normal">
               <Calendar className="h-4 w-4 mr-1" />
@@ -81,7 +81,7 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
           )}
         </CardHeader>
         
-        <CardContent className="pt-0 flex-1 flex flex-col justify-end">
+        <CardContent className="pt-0 px-6 pb-6 flex-1 flex flex-col justify-end">
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap gap-1">
               {article.tags.slice(0, 3).map((tag) => (

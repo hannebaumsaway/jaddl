@@ -82,6 +82,7 @@ export interface JaddlArticleFields {
   year: number;
   week: number;
   tags?: string[];
+  playoffs?: boolean;
   featureImage?: Asset; // Note: field name is "featureImage" not "featuredImage"
 }
 

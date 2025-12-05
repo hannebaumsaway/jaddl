@@ -338,8 +338,7 @@ export async function getJaddlArticles(
       query['fields.week'] = week;
     }
     if (isPlayoff !== undefined) {
-      query['fields.week[gte]'] = isPlayoff ? 13 : 0;
-      query['fields.week[lte]'] = isPlayoff ? 20 : 12;
+      query['fields.playoffs'] = isPlayoff;
     }
     if (tags && tags.length > 0) {
       query['fields.tags[in]'] = tags.join(',');
@@ -453,6 +452,17 @@ export async function getJaddlArticleTags(preview = false): Promise<string[]> {
 function processJaddlArticle(entry: any): ProcessedJaddlArticle {
   const { fields } = entry;
   
+  // Contentful field ID is "playoffs" (lowercase)
+  // If the field exists (even if false), use it; otherwise fallback to week-based logic
+  let isPlayoff: boolean;
+  if ('playoffs' in fields && fields.playoffs !== undefined && fields.playoffs !== null) {
+    // Field exists - use its value (convert to boolean if needed)
+    isPlayoff = fields.playoffs === true || fields.playoffs === 'true';
+  } else {
+    // Field doesn't exist - fallback to week-based logic
+    isPlayoff = fields.week >= 15;
+  }
+  
   return {
     id: entry.sys.id,
     title: fields.title,
@@ -461,7 +471,7 @@ function processJaddlArticle(entry: any): ProcessedJaddlArticle {
     year: fields.year,
     week: fields.week,
     tags: fields.tags || [],
-    isPlayoff: fields.week >= 13, // Week 13+ is considered playoff
+    isPlayoff,
     featuredImage: processAsset(fields.featureImage), // Note: using featureImage field
     featuredTeams: fields.featuredTeams?.map((team: any) => ({
       id: team.sys.id,

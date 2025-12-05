@@ -149,16 +149,16 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
     return `${year} - Week ${week}`;
   };
 
-  const getWeekTypeColor = (week: number) => {
+  const getWeekTypeColor = (isPlayoff: boolean, week: number) => {
     if (week === 0) return 'bg-blue-100 text-blue-800';
-    if (week >= 13) return 'bg-purple-100 text-purple-800';
+    if (isPlayoff) return 'bg-purple-100 text-purple-800';
     return 'bg-green-100 text-green-800';
   };
 
-  const getWeekTypeLabel = (week: number) => {
+  const getWeekTypeLabel = (isPlayoff: boolean, week: number) => {
     if (week === 0) return 'PRESEASON';
-    if (week >= 13) return 'PLAYOFF';
-    return 'REGULAR';
+    if (isPlayoff) return 'PLAYOFF';
+    return 'REGULAR SEASON';
   };
 
   const handleImageClick = () => {
@@ -189,9 +189,9 @@ export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
           <div className="flex items-center gap-2 mb-4">
             <Badge 
               variant="secondary" 
-              className={`text-xs font-normal font-mono ${getWeekTypeColor(article.week)}`}
+              className={`text-xs font-normal font-mono ${getWeekTypeColor(article.isPlayoff, article.week)}`}
             >
-              {getWeekTypeLabel(article.week)}
+              {getWeekTypeLabel(article.isPlayoff, article.week)}
             </Badge>
             <div className="flex items-center text-sm text-muted-foreground font-mono font-normal">
               <Calendar className="h-4 w-4 mr-1" />

@@ -18,12 +18,13 @@ import {
   Download
 } from 'lucide-react';
 import { ScoreImport } from './score-import';
+import { PlayoffExport } from './playoff-export';
 
 export function AdminDashboard() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'score-import'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'score-import' | 'playoff-export'>('overview');
 
   useEffect(() => {
     // Check if user is authenticated
@@ -119,6 +120,15 @@ export function AdminDashboard() {
             >
               <Download className="h-4 w-4" />
               Score Import
+            </Button>
+            <Button
+              variant={activeTab === 'playoff-export' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('playoff-export')}
+              className="flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Playoff Export
             </Button>
           </div>
         </div>
@@ -274,6 +284,10 @@ export function AdminDashboard() {
 
         {activeTab === 'score-import' && (
           <ScoreImport />
+        )}
+
+        {activeTab === 'playoff-export' && (
+          <PlayoffExport />
         )}
       </main>
     </div>

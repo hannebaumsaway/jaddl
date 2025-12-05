@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ClientLogo } from '@/components/ui/client-logo';
 import { getJaddlArticles, getTeamProfiles } from '@/lib/contentful/api';
@@ -17,10 +18,24 @@ import { supabase } from '@/lib/supabase/client';
 import { SimpleStandingsTable } from '@/components/standings/SimpleStandingsTable';
 import { enrichTeamsWithSupabaseData } from '@/lib/utils/team-mapping';
 import { generateArticleSlug } from '@/lib/utils/slug';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'Home',
   description: 'Welcome to JADDL Fantasy Football League - Your premier destination for fantasy football competition.',
+};
+
+// Helper functions for article badge styling (matching ArticleCard component)
+const getWeekTypeColor = (isPlayoff: boolean, week: number) => {
+  if (week === 0) return 'bg-blue-100 text-blue-800';
+  if (isPlayoff) return 'bg-purple-100 text-purple-800';
+  return 'bg-green-100 text-green-800';
+};
+
+const getWeekTypeLabel = (isPlayoff: boolean, week: number) => {
+  if (week === 0) return 'PRESEASON';
+  if (isPlayoff) return 'PLAYOFF';
+  return 'REGULAR SEASON';
 };
 
 export default async function HomePage() {
@@ -122,10 +137,13 @@ export default async function HomePage() {
                      {/* Content */}
                      <div className="flex-1 min-w-0 py-6 px-4">
                        <div className="flex items-center justify-between mb-3">
-                         <span className="text-xs font-medium text-foreground uppercase tracking-wide">
-                           {article.isPlayoff ? 'Playoffs' : 'Regular Season'}
-                         </span>
-                         <span className="text-xs text-muted-foreground">
+                         <Badge 
+                           variant="secondary" 
+                           className={cn("text-xs font-normal font-mono", getWeekTypeColor(article.isPlayoff, article.week))}
+                         >
+                           {getWeekTypeLabel(article.isPlayoff, article.week)}
+                         </Badge>
+                         <span className="text-xs text-muted-foreground font-mono font-normal">
                            {article.year} Week {article.week}
                          </span>
                        </div>
