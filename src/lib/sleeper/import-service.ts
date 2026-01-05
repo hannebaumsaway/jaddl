@@ -66,10 +66,16 @@ export async function importWeekScores(
         throw new Error(`Unknown roster IDs: ${sleeperGame.away_roster_id}, ${sleeperGame.home_roster_id}`);
       }
 
+      // Special handling for 2025: Week 14 is not playoffs (it has special rules)
+      // For 2025: Week 14 = regular season (but doesn't count for division standings in logic)
+      //           Week 15+ = playoffs
+      // For other years: Week 14+ = playoffs (as before)
+      const isPlayoffs = year === 2025 ? week >= 15 : week >= 14;
+
       return {
         year,
         week,
-        playoffs: week >= 14, // Week 14+ is considered playoffs
+        playoffs: isPlayoffs,
         away_team_id: awayTeamId,
         home_team_id: homeTeamId,
         away_score: sleeperGame.away_score,

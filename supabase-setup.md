@@ -187,11 +187,28 @@ CREATE TABLE articles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create playoff_seeds table (for 2025 pod structure and future playoff seedings)
+CREATE TABLE playoff_seeds (
+  id SERIAL PRIMARY KEY,
+  season_year INTEGER NOT NULL,
+  team_id INTEGER NOT NULL REFERENCES teams(id),
+  seed INTEGER NOT NULL CHECK (seed >= 1 AND seed <= 8),
+  is_division_winner BOOLEAN NOT NULL DEFAULT false,
+  is_wildcard BOOLEAN NOT NULL DEFAULT false,
+  pod VARCHAR(1) CHECK (pod IN ('A', 'B') OR pod IS NULL), -- NULL for byes (seeds 1-2 in 2025)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(season_year, team_id),
+  UNIQUE(season_year, seed)
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_games_season_week ON games(season_year, week);
 CREATE INDEX idx_team_seasons_year ON team_seasons(season_year);
 CREATE INDEX idx_trophy_case_season ON trophy_case(season_year);
 CREATE INDEX idx_articles_published ON articles(published_at DESC);
+CREATE INDEX idx_playoff_seeds_season_year ON playoff_seeds(season_year);
+CREATE INDEX idx_playoff_seeds_season_pod ON playoff_seeds(season_year, pod);
 
 -- Add some sample data
 INSERT INTO teams (name, short_name, owner_name, logo) VALUES

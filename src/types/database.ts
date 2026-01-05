@@ -205,6 +205,49 @@ export interface Standings {
   };
 }
 
+// Playoff seed result from calculation (includes team and record data)
+export interface PlayoffSeedResult {
+  seed: number;
+  team_id: number;
+  team: Team;
+  teamRecord: TeamRecord;
+  isDivisionWinner: boolean;
+  isWildcard: boolean;
+}
+
+// Playoff seed database row
+export interface PlayoffSeedRow {
+  id?: number;
+  season_year: number;
+  team_id: number;
+  seed: number;
+  is_division_winner: boolean;
+  is_wildcard: boolean;
+  pod: 'A' | 'B' | null;
+  created_at?: string;
+  updated_at?: string;
+  // Relations
+  team?: Team;
+}
+
+export interface PlayoffPods {
+  podA: {
+    seed: number;
+    team_id: number;
+    team: Team;
+  }[];
+  podB: {
+    seed: number;
+    team_id: number;
+    team: Team;
+  }[];
+  byes: {
+    seed: number;
+    team_id: number;
+    team: Team;
+  }[];
+}
+
 export interface WeeklyMatchup {
   game: Game;
   home_team: Team;

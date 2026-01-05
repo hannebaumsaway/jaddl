@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { calculateStandings } from '@/lib/supabase/api';
+import { calculateStandings, calculatePlayoffSeeds, savePlayoffSeeds, getPlayoffSeeds, getPlayoffPods } from '@/lib/supabase/api';
 import { getGames } from '@/lib/supabase/api';
 import { getTeams } from '@/lib/supabase/api';
 
@@ -253,16 +253,33 @@ export async function GET(request: Request) {
     // Format output
     const playoffTeams = leagueSeason?.playoff_teams || 8;
     const totalTeams = leagueSeason?.team_count || teams.length;
+    const is2025 = year === 2025;
 
     let output = `# Fantasy Football League Playoff Scenario Analysis\n\n`;
     output += `**Season:** ${year}\n`;
     output += `**Current Week:** ${currentWeek}\n`;
     output += `**Total Teams:** ${totalTeams}\n`;
     output += `**Playoff Structure:**\n`;
-    output += `- **Regular Season:** Weeks 1-13\n`;
-    output += `- **Week 14 (Play-in Round):** 4 ${useQuads ? 'Quad' : 'Division'} winners get BYEs. Remaining 8 teams play in Week 14.\n`;
-    output += `- **After Week 14:** Top 4 TOTAL SEASON points scorers from the 8 non-${useQuads ? 'quad' : 'division'} winner teams advance.\n`;
-    output += `- **Weeks 15-17 (Playoffs):** 8 teams (4 ${useQuads ? 'Quad' : 'Division'} winners + 4 highest total points from play-in teams)\n\n`;
+    
+    if (is2025) {
+      output += `- **Regular Season (Division Standings):** Weeks 1-13 only (Week 14 does NOT count toward division standings)\n`;
+      output += `- **Week 14:** Does NOT count toward division standings/winners. Only counts toward:\n`;
+      output += `  - Points title (most overall points across the league)\n`;
+      output += `  - Wildcard qualification (4 non-division winners with highest season point totals)\n`;
+      output += `- **Playoff Seeding:**\n`;
+      output += `  - Seeds 1-4: 4 Division winners (seeded by overall record)\n`;
+      output += `  - Seeds 5-8: 4 Wildcards (non-division winners with highest season point totals)\n`;
+      output += `- **Week 15 Playoffs:**\n`;
+      output += `  - Seeds 1-2: BYE (automatically advance to semifinals)\n`;
+      output += `  - Pod A: Seeds 3, 5, 8 (highest score advances to semifinals)\n`;
+      output += `  - Pod B: Seeds 4, 6, 7 (highest score advances to semifinals)\n`;
+      output += `- **Weeks 16-17:** Semifinals and Championship\n\n`;
+    } else {
+      output += `- **Regular Season:** Weeks 1-13\n`;
+      output += `- **Week 14 (Play-in Round):** 4 ${useQuads ? 'Quad' : 'Division'} winners get BYEs. Remaining 8 teams play in Week 14.\n`;
+      output += `- **After Week 14:** Top 4 TOTAL SEASON points scorers from the 8 non-${useQuads ? 'quad' : 'division'} winner teams advance.\n`;
+      output += `- **Weeks 15-17 (Playoffs):** 8 teams (4 ${useQuads ? 'Quad' : 'Division'} winners + 4 highest total points from play-in teams)\n\n`;
+    }
 
     output += `## Current Standings (Regular Season Only)\n\n`;
     output += `| Rank | Team | W | L | T | Win % | Points For | Points Against | Point Diff | Status |\n`;
@@ -373,38 +390,131 @@ export async function GET(request: Request) {
 
     // Show Week 14 play-in scenario if we're at or past Week 13
     if (currentWeek >= 13) {
-      output += `## Week 14 Play-in Scenario\n\n`;
-      output += `### ${useQuads ? 'Quad' : 'Division'} Winners (BYE Week 14):\n`;
-      const winnerTeams = standings.filter(s => divisionWinners.has(s.team_id));
-      winnerTeams.forEach((team, index) => {
-        output += `${index + 1}. ${team.team.team_name} (${team.wins}-${team.losses}-${team.ties}, ${team.points_for.toFixed(1)} total PF)\n`;
-      });
-      output += `\n### Teams in Week 14 Play-in (Top 4 TOTAL SEASON points advance):\n`;
-      const playInTeams = standings
-        .filter(s => !divisionWinners.has(s.team_id))
-        .sort((a, b) => b.points_for - a.points_for); // Sort by total points
-      playInTeams.forEach((team, index) => {
-        const status = index < 4 ? '✅' : '❌';
-        output += `${index + 1}. ${status} ${team.team.team_name} (${team.wins}-${team.losses}-${team.ties}, ${team.points_for.toFixed(1)} total PF)\n`;
-      });
-      output += `\n*✅ = Currently in top 4 total points | ❌ = Outside top 4*\n`;
-      output += `*Note: Final standings after Week 14 determine which 4 teams advance*\n\n`;
+      if (is2025) {
+        output += `## Week 14 Information (2025 Special Rules)\n\n`;
+        output += `**Important:** Week 14 does NOT count toward division standings. It only counts toward the points title and wildcard qualification.\n\n`;
+        
+        output += `### ${useQuads ? 'Quad' : 'Division'} Winners (Based on Weeks 1-13 only):\n`;
+        const winnerTeams = standings.filter(s => divisionWinners.has(s.team_id));
+        winnerTeams.forEach((team, index) => {
+          output += `${index + 1}. ${team.team.team_name} (${team.wins}-${team.losses}-${team.ties}, ${team.points_for.toFixed(1)} total PF)\n`;
+        });
+        output += `\n### Wildcard Race (Top 4 TOTAL SEASON points - including Week 14 - advance):\n`;
+        const playInTeams = standings
+          .filter(s => !divisionWinners.has(s.team_id))
+          .sort((a, b) => b.points_for - a.points_for); // Sort by total points (includes Week 14)
+        playInTeams.forEach((team, index) => {
+          const status = index < 4 ? '✅' : '❌';
+          output += `${index + 1}. ${status} ${team.team.team_name} (${team.wins}-${team.losses}-${team.ties}, ${team.points_for.toFixed(1)} total PF)\n`;
+        });
+        output += `\n*✅ = Currently in top 4 total points | ❌ = Outside top 4*\n`;
+        output += `*Note: Week 14 points ARE included in total PF for wildcard qualification*\n\n`;
+      } else {
+        output += `## Week 14 Play-in Scenario\n\n`;
+        output += `### ${useQuads ? 'Quad' : 'Division'} Winners (BYE Week 14):\n`;
+        const winnerTeams = standings.filter(s => divisionWinners.has(s.team_id));
+        winnerTeams.forEach((team, index) => {
+          output += `${index + 1}. ${team.team.team_name} (${team.wins}-${team.losses}-${team.ties}, ${team.points_for.toFixed(1)} total PF)\n`;
+        });
+        output += `\n### Teams in Week 14 Play-in (Top 4 TOTAL SEASON points advance):\n`;
+        const playInTeams = standings
+          .filter(s => !divisionWinners.has(s.team_id))
+          .sort((a, b) => b.points_for - a.points_for); // Sort by total points
+        playInTeams.forEach((team, index) => {
+          const status = index < 4 ? '✅' : '❌';
+          output += `${index + 1}. ${status} ${team.team.team_name} (${team.wins}-${team.losses}-${team.ties}, ${team.points_for.toFixed(1)} total PF)\n`;
+        });
+        output += `\n*✅ = Currently in top 4 total points | ❌ = Outside top 4*\n`;
+        output += `*Note: Final standings after Week 14 determine which 4 teams advance*\n\n`;
+      }
+    }
+    
+    // Show playoff seeds and pods for Week 15 (2025 only)
+    if (is2025 && currentWeek >= 14) {
+      // Try to get seeds from database first, calculate and save if not present
+      let seedRows = await getPlayoffSeeds(year);
+      if (seedRows.length < 8) {
+        // Seeds not saved yet, calculate and save them
+        try {
+          seedRows = await savePlayoffSeeds(year);
+        } catch (error) {
+          console.error('Error saving playoff seeds:', error);
+        }
+      }
+
+      if (seedRows.length >= 8) {
+        // Get calculated seeds for display (includes team records and names)
+        const calculatedSeeds = await calculatePlayoffSeeds(year);
+        const seedMap = new Map(calculatedSeeds.map(s => [s.seed, s]));
+
+        output += `## Playoff Seeds (After Week 14)\n\n`;
+        seedRows.forEach(seedRow => {
+          const calculatedSeed = seedMap.get(seedRow.seed);
+          const teamName = calculatedSeed?.team.team_name || `Team ${seedRow.team_id}`;
+          const typeLabel = seedRow.is_division_winner ? '🏆 Division Winner' : '🎯 Wildcard';
+          const record = calculatedSeed 
+            ? `(${calculatedSeed.teamRecord.wins}-${calculatedSeed.teamRecord.losses}-${calculatedSeed.teamRecord.ties}, ${calculatedSeed.teamRecord.points_for.toFixed(1)} PF)`
+            : '';
+          output += `**Seed ${seedRow.seed}:** ${teamName} ${typeLabel}${record ? ' ' + record : ''}${seedRow.pod ? ` [Pod ${seedRow.pod}]` : seedRow.seed <= 2 ? ' [BYE]' : ''}\n`;
+        });
+        output += `\n`;
+        
+        const playoffPods = await getPlayoffPods(year, 15);
+        if (playoffPods && currentWeek >= 15) {
+          output += `## Week 15 Playoff Pods\n\n`;
+          output += `### BYE (Advance to Semifinals):\n`;
+          playoffPods.byes.forEach(bye => {
+            output += `- **Seed ${bye.seed}:** ${bye.team.team_name}\n`;
+          });
+          output += `\n### Pod A (Highest score advances to Semifinals):\n`;
+          playoffPods.podA.forEach(team => {
+            output += `- **Seed ${team.seed}:** ${team.team.team_name}\n`;
+          });
+          output += `\n### Pod B (Highest score advances to Semifinals):\n`;
+          playoffPods.podB.forEach(team => {
+            output += `- **Seed ${team.seed}:** ${team.team.team_name}\n`;
+          });
+          output += `\n`;
+        }
+      }
     }
 
     output += `## Playoff Qualification Rules\n\n`;
-    output += `### ${useQuads ? 'Quad' : 'Division'} Winners:\n`;
-    output += `- Top team in each ${useQuads ? 'quad' : 'division'} determined by tiebreaker rules below\n`;
-    output += `- Receive automatic playoff bid and BYE in Week 14\n\n`;
-    output += `### Week 14 Play-in:\n`;
-    output += `- Remaining 8 teams play in Week 14\n`;
-    output += `- After Week 14, top 4 TOTAL SEASON points scorers from these 8 teams advance\n`;
-    output += `- Join the 4 ${useQuads ? 'Quad' : 'Division'} winners for 8-team playoff bracket\n`;
-    output += `- *Advancement is based on total points for the entire season, not just Week 14 performance*\n\n`;
-    output += `### Tiebreaker Rules (for ${useQuads ? 'Quad' : 'Division'} winners):\n`;
-    output += `1. Overall record (win %)\n`;
-    output += `2. Division/Quad record (win %)\n`;
-    output += `3. Head-to-head record\n`;
-    output += `4. Total points scored\n\n`;
+    
+    if (is2025) {
+      output += `### ${useQuads ? 'Quad' : 'Division'} Winners (Seeds 1-4):\n`;
+      output += `- Top team in each ${useQuads ? 'quad' : 'division'} determined by Weeks 1-13 only (Week 14 does NOT count)\n`;
+      output += `- Receive automatic playoff bid\n`;
+      output += `- Seeded by overall record (Weeks 1-13) - Seeds 1 and 2 get BYE in Week 15\n\n`;
+      output += `### Wildcards (Seeds 5-8):\n`;
+      output += `- 4 non-division winners with highest TOTAL SEASON points (including Week 14)\n`;
+      output += `- Week 14 points DO count toward wildcard qualification\n`;
+      output += `- Seeded by total points (Seeds 5-8)\n\n`;
+      output += `### Week 15 Playoffs (Pod Structure):\n`;
+      output += `- **Seeds 1-2:** BYE (automatically advance to semifinals)\n`;
+      output += `- **Pod A:** Seeds 3, 5, 8 play - highest score advances\n`;
+      output += `- **Pod B:** Seeds 4, 6, 7 play - highest score advances\n`;
+      output += `- The 2 pod winners join seeds 1-2 in the semifinals\n\n`;
+      output += `### Tiebreaker Rules (for ${useQuads ? 'Quad' : 'Division'} winners, Weeks 1-13 only):\n`;
+      output += `1. Overall record (win %)\n`;
+      output += `2. Division/Quad record (win %)\n`;
+      output += `3. Head-to-head record\n`;
+      output += `4. Total points scored\n\n`;
+    } else {
+      output += `### ${useQuads ? 'Quad' : 'Division'} Winners:\n`;
+      output += `- Top team in each ${useQuads ? 'quad' : 'division'} determined by tiebreaker rules below\n`;
+      output += `- Receive automatic playoff bid and BYE in Week 14\n\n`;
+      output += `### Week 14 Play-in:\n`;
+      output += `- Remaining 8 teams play in Week 14\n`;
+      output += `- After Week 14, top 4 TOTAL SEASON points scorers from these 8 teams advance\n`;
+      output += `- Join the 4 ${useQuads ? 'Quad' : 'Division'} winners for 8-team playoff bracket\n`;
+      output += `- *Advancement is based on total points for the entire season, not just Week 14 performance*\n\n`;
+      output += `### Tiebreaker Rules (for ${useQuads ? 'Quad' : 'Division'} winners):\n`;
+      output += `1. Overall record (win %)\n`;
+      output += `2. Division/Quad record (win %)\n`;
+      output += `3. Head-to-head record\n`;
+      output += `4. Total points scored\n\n`;
+    }
 
     output += `---\n\n`;
     output += `*Use this data to analyze playoff scenarios, ${useQuads ? 'quad' : 'division'} winner races, Week 14 play-in positioning, and remaining matchups that could affect playoff qualification.*\n`;

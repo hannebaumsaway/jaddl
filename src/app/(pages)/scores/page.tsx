@@ -45,11 +45,26 @@ export async function generateMetadata({ searchParams }: {
       description = `Historical head-to-head matchups between ${team1.teamName} and ${team2.teamName} in the JADDL fantasy football league.`;
     }
   } else {
+    // Special handling for 2025 playoff structure
+    const is2025 = seasonYear === 2025;
+    const getPlayoffWeekLabel = (week: number, year: number) => {
+      if (year === 2025) {
+        // 2025: Week 15 = Pods, Week 16 = Semifinals, Week 17 = Championship
+        if (week === 15) return 'Pod Round';
+        if (week === 16) return 'Semifinals';
+        if (week === 17) return 'Championship';
+        return `Playoff Week ${week}`;
+      } else {
+        // Standard: Week 1 = Quarterfinals, Week 2 = Semifinals, Week 3 = Championship
+        if (week === 1) return 'Quarterfinals';
+        if (week === 2) return 'Semifinals';
+        if (week === 3) return 'Championship';
+        return `Playoff Week ${week}`;
+      }
+    };
+    
     const weekType = isPlayoffs ? 
-      (currentWeek === 1 ? 'Quarterfinals' : 
-       currentWeek === 2 ? 'Semifinals' : 
-       currentWeek === 3 ? 'Championship' : 
-       `Playoff Week ${currentWeek}`) : 
+      getPlayoffWeekLabel(currentWeek, seasonYear) : 
       `Week ${currentWeek}`;
     title = `${seasonYear} ${weekType} Scores`;
     description = `${seasonYear} Season ${weekType} matchup scores and results for the JADDL fantasy football league.`;
@@ -224,11 +239,20 @@ export default async function ScoresPage({
           <div className="px-4 py-2 font-semibold mt-2">
             {seasonYear} Season • {(() => {
               if (isPlayoffs) {
-                const playoffRound = currentWeek === 1 ? 'Quarterfinals' : 
-                                    currentWeek === 2 ? 'Semifinals' : 
-                                    currentWeek === 3 ? 'Championship' : 
-                                    `Playoff Week ${currentWeek}`;
-                return playoffRound;
+                // Special handling for 2025
+                if (seasonYear === 2025) {
+                  const playoffRound = currentWeek === 15 ? 'Pod Round' : 
+                                      currentWeek === 16 ? 'Semifinals' : 
+                                      currentWeek === 17 ? 'Championship' : 
+                                      `Playoff Week ${currentWeek}`;
+                  return playoffRound;
+                } else {
+                  const playoffRound = currentWeek === 1 ? 'Quarterfinals' : 
+                                      currentWeek === 2 ? 'Semifinals' : 
+                                      currentWeek === 3 ? 'Championship' : 
+                                      `Playoff Week ${currentWeek}`;
+                  return playoffRound;
+                }
               }
               return `Week ${currentWeek}`;
             })()}
@@ -660,18 +684,30 @@ export default async function ScoresPage({
                   <div className="text-sm text-muted-foreground">
                     {(isHeadToHead || isAllGames) ? (
                       `${game.year} Season • ${game.playoffs ? 
-                        (game.week === 1 ? 'Quarterfinals' : 
-                         game.week === 2 ? 'Semifinals' : 
-                         game.week === 3 ? 'Championship' : 
-                         `Playoff Week ${game.week}`) : 
+                        (game.year === 2025 ? 
+                          (game.week === 15 ? 'Pod Round' :
+                           game.week === 16 ? 'Semifinals' :
+                           game.week === 17 ? 'Championship' :
+                           `Playoff Week ${game.week}`) :
+                          (game.week === 1 ? 'Quarterfinals' : 
+                           game.week === 2 ? 'Semifinals' : 
+                           game.week === 3 ? 'Championship' : 
+                           `Playoff Week ${game.week}`)
+                        ) : 
                         `Week ${game.week}`
                       }`
                     ) : (
                       isPlayoffs ? 
-                        (currentWeek === 1 ? 'Quarterfinals' : 
-                         currentWeek === 2 ? 'Semifinals' : 
-                         currentWeek === 3 ? 'Championship' : 
-                         `Playoff Week ${currentWeek}`) : 
+                        (seasonYear === 2025 ?
+                          (currentWeek === 15 ? 'Pod Round' :
+                           currentWeek === 16 ? 'Semifinals' :
+                           currentWeek === 17 ? 'Championship' :
+                           `Playoff Week ${currentWeek}`) :
+                          (currentWeek === 1 ? 'Quarterfinals' : 
+                           currentWeek === 2 ? 'Semifinals' : 
+                           currentWeek === 3 ? 'Championship' : 
+                           `Playoff Week ${currentWeek}`)
+                        ) : 
                         'Regular Season'
                     )}
                   </div>

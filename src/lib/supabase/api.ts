@@ -14,7 +14,10 @@ import type {
   TeamBio,
   FranchiseHistory,
   Draft,
-  Article
+  Article,
+  PlayoffSeedResult,
+  PlayoffSeedRow,
+  PlayoffPods
 } from '@/types/database';
 
 // Teams
@@ -333,6 +336,10 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
       quads = await getQuads();
     }
 
+    // Special handling for 2025: Week 14 doesn't count toward division standings
+    const is2025 = seasonYear === 2025;
+    const divisionCutoffWeek = is2025 ? 13 : 14;
+
     const teamRecords: Map<number, TeamRecord> = new Map();
 
     // Build quick lookup for each team's division and quad for this season
@@ -368,29 +375,37 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
         const awayRecord = teamRecords.get(game.away_team_id);
 
         if (homeRecord && awayRecord) {
+          // Always include points in totals (for wildcard calculations and points title)
           homeRecord.points_for += game.home_score!;
           homeRecord.points_against += game.away_score!;
           awayRecord.points_for += game.away_score!;
           awayRecord.points_against += game.home_score!;
 
-          if (game.home_score! > game.away_score!) {
-            homeRecord.wins++;
-            awayRecord.losses++;
-          } else if (game.away_score! > game.home_score!) {
-            awayRecord.wins++;
-            homeRecord.losses++;
-          } else {
-            homeRecord.ties++;
-            awayRecord.ties++;
+          // For 2025, Week 14 doesn't count toward W-L-T records at all (only points count)
+          // For other years, or if not Week 14, update W-L-T normally
+          const includeInRecord = !is2025 || game.week !== 14;
+          const isRegularSeason = !game.playoffs;
+
+          if (includeInRecord && isRegularSeason) {
+            if (game.home_score! > game.away_score!) {
+              homeRecord.wins++;
+              awayRecord.losses++;
+            } else if (game.away_score! > game.home_score!) {
+              awayRecord.wins++;
+              homeRecord.losses++;
+            } else {
+              homeRecord.ties++;
+              awayRecord.ties++;
+            }
           }
 
-          // Division record updates (only if both teams share a valid division, regular season only)
+          // Division record updates (only if both teams share a valid division, regular season only, and within cutoff week)
           const homeDivisionId = teamIdToDivisionId.get(game.home_team_id);
           const awayDivisionId = teamIdToDivisionId.get(game.away_team_id);
           const isDivisionGame = homeDivisionId !== null && homeDivisionId !== undefined && homeDivisionId === awayDivisionId;
-          const isRegularSeason = !game.playoffs;
+          const isDivisionEligible = isRegularSeason && game.week <= divisionCutoffWeek;
 
-          if (isDivisionGame && isRegularSeason) {
+          if (isDivisionGame && isDivisionEligible) {
             if (game.home_score! > game.away_score!) {
               homeRecord.division_wins = (homeRecord.division_wins || 0) + 1;
               awayRecord.division_losses = (awayRecord.division_losses || 0) + 1;
@@ -403,12 +418,12 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
             }
           }
 
-          // Quad record updates (only if both teams share a valid quad, regular season only)
+          // Quad record updates (only if both teams share a valid quad, regular season only, and within cutoff week)
           const homeQuadId = teamIdToQuadId.get(game.home_team_id);
           const awayQuadId = teamIdToQuadId.get(game.away_team_id);
           const isQuadGame = homeQuadId !== null && homeQuadId !== undefined && homeQuadId === awayQuadId;
 
-          if (isQuadGame && isRegularSeason) {
+          if (isQuadGame && isDivisionEligible) {
             if (game.home_score! > game.away_score!) {
               homeRecord.quad_wins = (homeRecord.quad_wins || 0) + 1;
               awayRecord.quad_losses = (awayRecord.quad_losses || 0) + 1;
@@ -582,6 +597,297 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
       season_year: seasonYear,
       overall: [],
     };
+  }
+}
+
+/**
+ * Calculate playoff seeds for a given season
+ * For 2025: Seeds 1-4 are division winners, Seeds 5-8 are wildcards (non-division winners by total points)
+ * Returns calculated seed results (does not save to database)
+ */
+export async function calculatePlayoffSeeds(seasonYear: number): Promise<PlayoffSeedResult[]> {
+  try {
+    const standings = await calculateStandings(seasonYear);
+    const teams = await getTeams();
+    const teamSeasons = await getTeamSeasons(seasonYear);
+    const leagueSeasons = await getLeagueSeasons();
+    
+    const currentLeagueSeason = leagueSeasons.find(ls => ls.year === seasonYear);
+    const structureType = currentLeagueSeason?.structure_type || 'single_league';
+    
+    let divisions: Division[] = [];
+    let quads: Quad[] = [];
+    
+    if (structureType === 'divisions') {
+      divisions = await getDivisions();
+    } else if (structureType === 'quads') {
+      quads = await getQuads();
+    }
+
+    const useQuads = structureType === 'quads';
+    const teamMap = new Map(teams.map(t => [t.team_id, t]));
+    
+    // Identify division/quad winners
+    const divisionWinners = new Set<number>();
+    
+    if (useQuads && standings.quads) {
+      Object.values(standings.quads).forEach(quadStandings => {
+        if (quadStandings.length > 0) {
+          divisionWinners.add(quadStandings[0].team_id);
+        }
+      });
+    } else if (standings.divisions) {
+      Object.values(standings.divisions).forEach(divStandings => {
+        if (divStandings.length > 0) {
+          divisionWinners.add(divStandings[0].team_id);
+        }
+      });
+    }
+
+    // Get division winners sorted by overall record (for seeds 1-4)
+    const divisionWinnerRecords = standings.overall
+      .filter(record => divisionWinners.has(record.team_id))
+      .sort((a, b) => {
+        if (a.win_percentage !== b.win_percentage) {
+          return b.win_percentage - a.win_percentage;
+        }
+        return b.points_for - a.points_for;
+      });
+
+    // Get wildcards (non-division winners sorted by total points including Week 14)
+    const wildcardRecords = standings.overall
+      .filter(record => !divisionWinners.has(record.team_id))
+      .sort((a, b) => b.points_for - a.points_for) // Sort by total points (includes Week 14 for 2025)
+      .slice(0, 4); // Top 4 wildcards
+
+    const seeds: PlayoffSeed[] = [];
+
+    // Seeds 1-4: Division winners
+    divisionWinnerRecords.forEach((record, index) => {
+      const team = teamMap.get(record.team_id);
+      if (team) {
+        seeds.push({
+          seed: index + 1,
+          team_id: record.team_id,
+          team,
+          teamRecord: record,
+          isDivisionWinner: true,
+          isWildcard: false,
+        });
+      }
+    });
+
+    // Seeds 5-8: Wildcards
+    wildcardRecords.forEach((record, index) => {
+      const team = teamMap.get(record.team_id);
+      if (team) {
+        seeds.push({
+          seed: index + 5,
+          team_id: record.team_id,
+          team,
+          teamRecord: record,
+          isDivisionWinner: false,
+          isWildcard: true,
+        });
+      }
+    });
+
+    return seeds.sort((a, b) => a.seed - b.seed);
+  } catch (error) {
+    handleSupabaseError(error, 'calculatePlayoffSeeds');
+    return [];
+  }
+}
+
+/**
+ * Save playoff seeds to database with pod assignments
+ * For 2025: Seeds 1-2 get pod=NULL (byes), Pod A = seeds 3,5,8, Pod B = seeds 4,6,7
+ */
+export async function savePlayoffSeeds(seasonYear: number): Promise<PlayoffSeedRow[]> {
+  try {
+    // Calculate seeds
+    const calculatedSeeds = await calculatePlayoffSeeds(seasonYear);
+    
+    if (calculatedSeeds.length !== 8) {
+      throw new Error(`Expected 8 playoff seeds, got ${calculatedSeeds.length}`);
+    }
+
+    // Delete existing seeds for this season
+    const { error: deleteError } = await supabase
+      .from('playoff_seeds')
+      .delete()
+      .eq('season_year', seasonYear);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    // Determine pod assignments (only for 2025)
+    const is2025 = seasonYear === 2025;
+    const getPod = (seed: number): 'A' | 'B' | null => {
+      if (!is2025) return null; // Pods only apply to 2025
+      if (seed <= 2) return null; // Seeds 1-2 get byes
+      if ([3, 5, 8].includes(seed)) return 'A';
+      if ([4, 6, 7].includes(seed)) return 'B';
+      return null;
+    };
+
+    // Insert seeds with pod assignments
+    const seedsToInsert = calculatedSeeds.map(seed => ({
+      season_year: seasonYear,
+      team_id: seed.team_id,
+      seed: seed.seed,
+      is_division_winner: seed.isDivisionWinner,
+      is_wildcard: seed.isWildcard,
+      pod: getPod(seed.seed),
+    }));
+
+    const { data, error } = await supabase
+      .from('playoff_seeds')
+      .insert(seedsToInsert)
+      .select();
+
+    if (error) {
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    handleSupabaseError(error, 'savePlayoffSeeds');
+    throw error;
+  }
+}
+
+/**
+ * Get playoff seeds from database for a season
+ */
+export async function getPlayoffSeeds(seasonYear: number): Promise<PlayoffSeedRow[]> {
+  try {
+    const { data, error } = await supabase
+      .from('playoff_seeds')
+      .select('*')
+      .eq('season_year', seasonYear)
+      .order('seed', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    handleSupabaseError(error, 'getPlayoffSeeds');
+    return [];
+  }
+}
+
+/**
+ * Get playoff pod structure for Week 15 from database
+ * For 2025: Pod A (seeds 3, 5, 8), Pod B (seeds 4, 6, 7), Seeds 1-2 get byes
+ */
+export async function getPlayoffPods(seasonYear: number, week: number): Promise<PlayoffPods | null> {
+  // Only apply pod structure for 2025, Week 15
+  if (seasonYear !== 2025 || week !== 15) {
+    return null;
+  }
+
+  try {
+    // Get seeds from database (should be saved after Week 14)
+    const seedRows = await getPlayoffSeeds(seasonYear);
+    
+    if (seedRows.length < 8) {
+      return null; // Seeds not saved yet
+    }
+
+    // Get teams for the seed rows
+    const teams = await getTeams();
+    const teamMap = new Map(teams.map(t => [t.team_id, t]));
+
+    const byes = seedRows
+      .filter(s => s.pod === null && s.seed <= 2)
+      .map(seed => ({
+        seed: seed.seed,
+        team_id: seed.team_id,
+        team: teamMap.get(seed.team_id)!,
+      }));
+
+    const podA = seedRows
+      .filter(s => s.pod === 'A')
+      .map(seed => ({
+        seed: seed.seed,
+        team_id: seed.team_id,
+        team: teamMap.get(seed.team_id)!,
+      }));
+
+    const podB = seedRows
+      .filter(s => s.pod === 'B')
+      .map(seed => ({
+        seed: seed.seed,
+        team_id: seed.team_id,
+        team: teamMap.get(seed.team_id)!,
+      }));
+
+    return {
+      byes,
+      podA,
+      podB,
+    };
+  } catch (error) {
+    handleSupabaseError(error, 'getPlayoffPods');
+    return null;
+  }
+}
+
+/**
+ * Determine which teams advance from Week 15 pods based on highest scores
+ * Returns the advancing teams from each pod
+ */
+export async function getPodWinners(seasonYear: number, week: number): Promise<{
+  podAWinner: { team_id: number; seed: number; score: number } | null;
+  podBWinner: { team_id: number; seed: number; score: number } | null;
+} | null> {
+  if (seasonYear !== 2025 || week !== 15) {
+    return null;
+  }
+
+  try {
+    const pods = await getPlayoffPods(seasonYear, week);
+    if (!pods) return null;
+
+    const week15Games = await getGames(seasonYear, week, undefined, false);
+    
+    // Get scores for each team in the pods
+    const getTeamWeek15Score = (teamId: number): number => {
+      const game = week15Games.find(g => 
+        (g.home_team_id === teamId || g.away_team_id === teamId) &&
+        g.home_score !== null && 
+        g.away_score !== null
+      );
+      if (!game) return 0;
+      return game.home_team_id === teamId ? game.home_score! : game.away_score!;
+    };
+
+    // Find highest scorer in Pod A
+    let podAWinner: { team_id: number; seed: number; score: number } | null = null;
+    pods.podA.forEach(team => {
+      const score = getTeamWeek15Score(team.team_id);
+      if (!podAWinner || score > podAWinner.score) {
+        podAWinner = { team_id: team.team_id, seed: team.seed, score };
+      }
+    });
+
+    // Find highest scorer in Pod B
+    let podBWinner: { team_id: number; seed: number; score: number } | null = null;
+    pods.podB.forEach(team => {
+      const score = getTeamWeek15Score(team.team_id);
+      if (!podBWinner || score > podBWinner.score) {
+        podBWinner = { team_id: team.team_id, seed: team.seed, score };
+      }
+    });
+
+    return { podAWinner, podBWinner };
+  } catch (error) {
+    handleSupabaseError(error, 'getPodWinners');
+    return null;
   }
 }
 
