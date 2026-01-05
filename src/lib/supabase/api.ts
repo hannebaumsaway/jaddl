@@ -609,7 +609,6 @@ export async function calculatePlayoffSeeds(seasonYear: number): Promise<Playoff
   try {
     const standings = await calculateStandings(seasonYear);
     const teams = await getTeams();
-    const teamSeasons = await getTeamSeasons(seasonYear);
     const leagueSeasons = await getLeagueSeasons();
     
     const currentLeagueSeason = leagueSeasons.find(ls => ls.year === seasonYear);
@@ -660,7 +659,7 @@ export async function calculatePlayoffSeeds(seasonYear: number): Promise<Playoff
       .sort((a, b) => b.points_for - a.points_for) // Sort by total points (includes Week 14 for 2025)
       .slice(0, 4); // Top 4 wildcards
 
-    const seeds: PlayoffSeed[] = [];
+    const seeds: PlayoffSeedResult[] = [];
 
     // Seeds 1-4: Division winners
     divisionWinnerRecords.forEach((record, index) => {

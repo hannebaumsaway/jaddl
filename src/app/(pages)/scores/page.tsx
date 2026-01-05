@@ -46,7 +46,6 @@ export async function generateMetadata({ searchParams }: {
     }
   } else {
     // Special handling for 2025 playoff structure
-    const is2025 = seasonYear === 2025;
     const getPlayoffWeekLabel = (week: number, year: number) => {
       if (year === 2025) {
         // 2025: Week 15 = Pods, Week 16 = Semifinals, Week 17 = Championship
