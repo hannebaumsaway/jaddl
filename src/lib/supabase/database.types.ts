@@ -449,6 +449,41 @@ export interface Database {
           updated_at?: string;
         };
       };
+      playoff_seeds: {
+        Row: {
+          id: number;
+          season_year: number;
+          team_id: number;
+          seed: number;
+          is_division_winner: boolean;
+          is_wildcard: boolean;
+          pod: 'A' | 'B' | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          season_year: number;
+          team_id: number;
+          seed: number;
+          is_division_winner?: boolean;
+          is_wildcard?: boolean;
+          pod?: 'A' | 'B' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          season_year?: number;
+          team_id?: number;
+          seed?: number;
+          is_division_winner?: boolean;
+          is_wildcard?: boolean;
+          pod?: 'A' | 'B' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

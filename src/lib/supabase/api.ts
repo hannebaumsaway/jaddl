@@ -743,7 +743,7 @@ export async function savePlayoffSeeds(seasonYear: number): Promise<PlayoffSeedR
 
     const { data, error } = await supabase
       .from('playoff_seeds')
-      .insert(seedsToInsert)
+      .insert(seedsToInsert as any)
       .select();
 
     if (error) {
