@@ -76,7 +76,7 @@ export async function getLeagueChampions(): Promise<LeagueChampion[]> {
         year,
         team_id,
         amount,
-        teams!inner(team_name)
+        teams(team_name)
       `)
       .eq('trophy_id', 1) // trophy_id 1 is championship
       .order('year', { ascending: false });
@@ -98,14 +98,21 @@ export async function getLeagueChampions(): Promise<LeagueChampion[]> {
     const champions: LeagueChampion[] = [];
 
     for (const trophy of championshipTrophies || []) {
-      const contentfulTeam = teamLookup.get((trophy as any).team_id);
+      const trophyData = trophy as any;
+      const teamId = trophyData.team_id;
+      const year = trophyData.year;
+      
+      // Handle case where teams relationship might be missing
+      const teamName = trophyData.teams?.team_name || `Team ${teamId}`;
+      
+      const contentfulTeam = teamLookup.get(teamId);
       
       // Get season record for this team/year
       const { data: games } = await supabase
         .from('games')
         .select('home_team_id, away_team_id, home_score, away_score, playoffs')
-        .eq('year', (trophy as any).year)
-        .or(`home_team_id.eq.${(trophy as any).team_id},away_team_id.eq.${(trophy as any).team_id}`);
+        .eq('year', year)
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`);
 
       let wins = 0;
       let losses = 0;
@@ -113,7 +120,7 @@ export async function getLeagueChampions(): Promise<LeagueChampion[]> {
       let playoffLosses = 0;
 
       games?.forEach((game: any) => {
-        const isHome = game.home_team_id === (trophy as any).team_id;
+        const isHome = game.home_team_id === teamId;
         const teamScore = isHome ? game.home_score : game.away_score;
         const opponentScore = isHome ? game.away_score : game.home_score;
 
@@ -129,8 +136,8 @@ export async function getLeagueChampions(): Promise<LeagueChampion[]> {
       });
 
       champions.push({
-        year: (trophy as any).year,
-        team: (trophy as any).teams.team_name,
+        year: year,
+        team: teamName,
         owner: 'N/A', // Owner info not available in current schema
         logo: contentfulTeam?.logo?.url || '🏈',
         record: `${wins}-${losses}`,
