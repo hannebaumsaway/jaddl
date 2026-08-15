@@ -1,45 +1,46 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session';
 
-export function middleware(request: NextRequest) {
+/**
+ * Endpoints that must stay reachable without a session, or you could never log
+ * in. Logout is public so a stale or invalid cookie can always be cleared.
+ */
+const PUBLIC_PATHS = new Set(['/admin/login', '/api/admin/login', '/api/admin/logout']);
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the request is for admin routes
-  if (pathname.startsWith('/admin')) {
-    // Allow access to login page
-    if (pathname === '/admin/login') {
-      return NextResponse.next();
-    }
-
-    // Check for admin session cookie
-    const sessionToken = request.cookies.get('admin-session');
-
-    if (!sessionToken) {
-      // Redirect to login if no session
-      return NextResponse.redirect(new URL('/admin/login', request.url));
-    }
-
-    // Basic session validation (in production, verify against database)
-    if (sessionToken.value && sessionToken.value.length === 64) {
-      return NextResponse.next();
-    } else {
-      // Invalid session, redirect to login
-      return NextResponse.redirect(new URL('/admin/login', request.url));
-    }
+  if (PUBLIC_PATHS.has(pathname)) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const session = await verifySessionToken(token);
+
+  if (session) {
+    return NextResponse.next();
+  }
+
+  // API callers get a status they can act on; browsers get sent to the login page.
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return NextResponse.redirect(new URL('/admin/login', request.url));
 }
 
+/**
+ * The admin pages AND the admin APIs. The previous matcher excluded every
+ * /api path, which left the API routes — including the import-scores write
+ * endpoint — completely unauthenticated. analyze-db and test-supabase are
+ * included because they expose table structures and sample rows.
+ */
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/admin/:path*',
+    '/api/admin/:path*',
+    '/api/analyze-db/:path*',
+    '/api/test-supabase/:path*',
   ],
 };

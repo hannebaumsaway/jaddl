@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { importWeekScores } from '@/lib/sleeper/import-service';
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // This endpoint writes games to the database, so it checks the session
+    // itself rather than trusting the middleware matcher alone.
+    const session = await verifySessionToken(cookies().get(ADMIN_SESSION_COOKIE)?.value);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { year, week } = await request.json();
 
     if (!year || !week) {

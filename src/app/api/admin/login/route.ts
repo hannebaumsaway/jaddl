@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import crypto from 'crypto';
+import {
+  ADMIN_SESSION_COOKIE,
+  SESSION_COOKIE_OPTIONS,
+  createSessionToken,
+} from '@/lib/auth/session';
+import { safeEqual } from '@/lib/auth/secrets';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -9,7 +14,6 @@ export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
 
-    // Get admin credentials from environment variables
     const adminUsername = process.env.ADMIN_USERNAME;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -20,28 +24,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simple credential check (in production, use proper password hashing)
-    if (username === adminUsername && password === adminPassword) {
-      // Generate a secure session token
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      
-      // Set secure HTTP-only cookie
-      const cookieStore = cookies();
-      cookieStore.set('admin-session', sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24, // 24 hours
-        path: '/',
-      });
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
+    }
 
-      return NextResponse.json({ success: true });
-    } else {
+    // Evaluate both comparisons so the response time doesn't reveal which failed.
+    const usernameMatches = safeEqual(username, adminUsername);
+    const passwordMatches = safeEqual(password, adminPassword);
+
+    if (!usernameMatches || !passwordMatches) {
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Signed session. Unlike the previous random token, this one is verifiable:
+    // the server can tell it issued it, so a made-up cookie can't stand in.
+    let sessionToken: string;
+    try {
+      sessionToken = await createSessionToken(adminUsername);
+    } catch (error) {
+      console.error('Cannot issue admin session:', error);
       return NextResponse.json(
-        { message: 'Invalid credentials' },
-        { status: 401 }
+        { message: 'Admin sessions are not configured on this deployment' },
+        { status: 500 }
       );
     }
+
+    cookies().set(ADMIN_SESSION_COOKIE, sessionToken, SESSION_COOKIE_OPTIONS);
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

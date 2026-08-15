@@ -94,8 +94,20 @@ Consequence to watch: `calculateStandings` sorts all of a season's games by `wee
 - `src/app/(pages)/` — public site (home, news, scores, standings, teams, history, survivor). Mostly server components; the home page is `force-dynamic`, and `teams/page.tsx` plus the news client components are `'use client'`.
 - `src/app/(admin)/admin/` — score import and playoff export dashboards, all client components.
 - `src/app/api/` — admin auth (`login`/`logout`/`verify`), `admin/import-scores`, `export-playoff-data`, `revalidate`, and the diagnostic `analyze-db` / `test-supabase` routes.
-- `src/middleware.ts` gates `/admin/*` on a 64-char `admin-session` cookie (set by `api/admin/login` from `ADMIN_USERNAME`/`ADMIN_PASSWORD`); it only checks cookie length, and the matcher excludes `/api`, so admin API routes are **not** middleware-protected.
-- `POST /api/revalidate?tag=…|path=…&secret=…` handles ISR invalidation (Contentful webhook target); the secret check only applies when a `secret` param is present.
+- `src/middleware.ts` gates the admin surface (see below).
+- `POST /api/revalidate?tag=…|path=…` handles ISR invalidation (Contentful webhook target). Authenticated with `REVALIDATE_SECRET` via the `x-revalidate-secret` header (preferred — query strings land in access logs) or a `secret` query param for existing webhook configs. Required on every call, compared with `safeEqual`, and fails closed when `REVALIDATE_SECRET` is unset.
+
+### Admin auth
+
+Sessions are **stateless and HMAC-signed** (`src/lib/auth/session.ts`). The cookie holds `base64url(payload).base64url(HMAC-SHA256)`; `verifySessionToken` recomputes the signature and checks `exp`, so only a token this server issued is accepted. Signed with `ADMIN_SESSION_SECRET`, falling back to `NEXTAUTH_SECRET` — if neither is set, session creation throws and verification fails closed, so a misconfigured deploy locks admin out rather than opening it up.
+
+Written with Web Crypto (not `node:crypto`) specifically so the same module runs in Edge middleware and Node route handlers. The `node:crypto` helper `safeEqual` lives separately in `src/lib/auth/secrets.ts` for that reason — importing it into middleware would break the Edge build.
+
+`src/middleware.ts` matches `/admin/*`, `/api/admin/*`, `/api/analyze-db/*`, and `/api/test-supabase/*` — browsers get redirected to `/admin/login`, API callers get a 401. `/admin/login`, `/api/admin/login`, and `/api/admin/logout` are exempt. `import-scores` also verifies the session itself, since it writes to the database and shouldn't depend on the matcher alone.
+
+Credentials are `ADMIN_USERNAME`/`ADMIN_PASSWORD`, compared with a hash-then-`timingSafeEqual`.
+
+Changing the signing secret invalidates all existing sessions.
 
 ### Database migrations
 

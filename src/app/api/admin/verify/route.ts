@@ -1,37 +1,21 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
 
+/**
+ * Session check for the dashboard. Middleware already rejects unauthenticated
+ * requests to this path; verifying again here means the answer stays correct
+ * even if the matcher changes, rather than relying on one layer.
+ */
 export async function GET() {
-  try {
-    const cookieStore = cookies();
-    const sessionToken = cookieStore.get('admin-session');
+  const session = await verifySessionToken(cookies().get(ADMIN_SESSION_COOKIE)?.value);
 
-    if (!sessionToken) {
-      return NextResponse.json(
-        { message: 'No session found' },
-        { status: 401 }
-      );
-    }
-
-    // In a real application, you would verify the session token
-    // against a database or session store. For simplicity, we'll
-    // just check if the token exists and has the right format.
-    if (sessionToken.value && sessionToken.value.length === 64) {
-      return NextResponse.json({ authenticated: true });
-    } else {
-      return NextResponse.json(
-        { message: 'Invalid session' },
-        { status: 401 }
-      );
-    }
-  } catch (error) {
-    console.error('Verification error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+  if (!session) {
+    return NextResponse.json({ message: 'Invalid session' }, { status: 401 });
   }
+
+  return NextResponse.json({ authenticated: true, expiresAt: session.exp });
 }
