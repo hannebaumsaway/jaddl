@@ -312,6 +312,146 @@ export async function getWeeklyMatchups(
   }
 }
 
+/**
+ * Per-season format configuration. Keeping this in one place is what lets the
+ * rest of the code stay year-agnostic.
+ *
+ * 2025 was the pod experiment: an 8-team field where the four quad winners took
+ * seeds 1-4, wildcards were ranked purely on points, and Week 14 was a play-in
+ * (points counted, W-L did not), pushing playoffs to NFL week 15.
+ * 2026 returns to the historical format used every year from 2007-2024: a 6-team
+ * field, group winners on top with byes, and wildcards ranked by record.
+ *
+ * `regularSeasonWeeks` is the last NFL week imported as a regular-season game.
+ * Playoff games are NOT stored by NFL week — every season since 2007 records them
+ * as rounds (week 1 = quarterfinal, 2 = semifinal, 3 = championship) with
+ * playoffs=true, so they are entered separately rather than through the weekly
+ * Sleeper import.
+ */
+export interface SeasonConfig {
+  playoffTeams: number;
+  usesPods: boolean;
+  wildcardRule: 'points' | 'record';
+  regularSeasonWeeks: number;
+}
+
+export function getSeasonConfig(seasonYear: number): SeasonConfig {
+  // Verified against the games table: 2007-2020 ran 13-week regular seasons,
+  // 2021 onward run 14.
+  const regularSeasonWeeks = seasonYear >= 2021 ? 14 : 13;
+
+  if (seasonYear === 2025) {
+    return { playoffTeams: 8, usesPods: true, wildcardRule: 'points', regularSeasonWeeks };
+  }
+  return { playoffTeams: 6, usesPods: false, wildcardRule: 'record', regularSeasonWeeks };
+}
+
+/** Win pct within a team's division/quad, whichever the season uses. */
+function getGroupWinPct(record: TeamRecord): number {
+  const groupWins = (record as any).quad_wins ?? record.division_wins ?? 0;
+  const groupLosses = (record as any).quad_losses ?? record.division_losses ?? 0;
+  const groupTies = (record as any).quad_ties ?? record.division_ties ?? 0;
+  const total = groupWins + groupLosses + groupTies;
+  return total > 0 ? (groupWins + groupTies * 0.5) / total : 0;
+}
+
+/** Head-to-head wins keyed `${winnerId}:${loserId}`, regular season only. */
+type HeadToHead = Map<string, number>;
+
+function buildHeadToHead(games: Game[]): HeadToHead {
+  const h2h: HeadToHead = new Map();
+
+  games.forEach(game => {
+    if (game.playoffs) return;
+    if (game.home_score === null || game.away_score === null) return;
+    if (game.home_score === game.away_score) return; // ties create no edge
+
+    const winner = game.home_score! > game.away_score! ? game.home_team_id : game.away_team_id;
+    const loser = game.home_score! > game.away_score! ? game.away_team_id : game.home_team_id;
+    const key = `${winner}:${loser}`;
+    h2h.set(key, (h2h.get(key) || 0) + 1);
+  });
+
+  return h2h;
+}
+
+/** Fallback chain once record and head-to-head are exhausted. */
+function compareGroupThenPoints(a: TeamRecord, b: TeamRecord): number {
+  const aGroup = getGroupWinPct(a);
+  const bGroup = getGroupWinPct(b);
+  if (aGroup !== bGroup) return bGroup - aGroup;
+  return b.points_for - a.points_for;
+}
+
+/**
+ * Break a tie among teams with identical overall records.
+ *
+ * Head-to-head is only a valid ordering for a pair, so for three or more tied
+ * teams we fall back to a mini round-robin win pct among just those teams —
+ * the standard resolution, since pairwise h2h can be circular (A beat B, B beat
+ * C, C beat A) and would make the sort order depend on input order.
+ */
+function resolveTie(tied: TeamRecord[], h2h: HeadToHead): TeamRecord[] {
+  if (tied.length < 2) return tied;
+
+  if (tied.length === 2) {
+    const [a, b] = tied;
+    const aWins = h2h.get(`${a.team_id}:${b.team_id}`) || 0;
+    const bWins = h2h.get(`${b.team_id}:${a.team_id}`) || 0;
+    if (aWins !== bWins) return aWins > bWins ? [a, b] : [b, a];
+    return [...tied].sort(compareGroupThenPoints);
+  }
+
+  const mini = new Map<number, { wins: number; losses: number }>();
+  tied.forEach(t => mini.set(t.team_id, { wins: 0, losses: 0 }));
+
+  for (let i = 0; i < tied.length; i++) {
+    for (let j = i + 1; j < tied.length; j++) {
+      const a = tied[i].team_id;
+      const b = tied[j].team_id;
+      const aWins = h2h.get(`${a}:${b}`) || 0;
+      const bWins = h2h.get(`${b}:${a}`) || 0;
+      mini.get(a)!.wins += aWins;
+      mini.get(a)!.losses += bWins;
+      mini.get(b)!.wins += bWins;
+      mini.get(b)!.losses += aWins;
+    }
+  }
+
+  const miniPct = (teamId: number): number => {
+    const m = mini.get(teamId)!;
+    const total = m.wins + m.losses;
+    return total > 0 ? m.wins / total : 0;
+  };
+
+  return [...tied].sort((a, b) => {
+    const diff = miniPct(b.team_id) - miniPct(a.team_id);
+    if (diff !== 0) return diff;
+    return compareGroupThenPoints(a, b);
+  });
+}
+
+/**
+ * Order teams for playoff seeding: overall record, then head-to-head, then
+ * division/quad record, then total points.
+ */
+export function sortForSeeding(records: TeamRecord[], h2h: HeadToHead): TeamRecord[] {
+  const byRecord = [...records].sort((a, b) => b.win_percentage - a.win_percentage);
+  const ordered: TeamRecord[] = [];
+
+  let i = 0;
+  while (i < byRecord.length) {
+    let j = i;
+    while (j + 1 < byRecord.length && byRecord[j + 1].win_percentage === byRecord[i].win_percentage) {
+      j++;
+    }
+    ordered.push(...resolveTie(byRecord.slice(i, j + 1), h2h));
+    i = j + 1;
+  }
+
+  return ordered;
+}
+
 // Standings calculation
 export async function calculateStandings(seasonYear: number): Promise<Standings> {
   try {
@@ -491,14 +631,6 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
       (record.wins + record.losses + record.ties) > 0
     );
     
-    const getGroupWinPct = (record: TeamRecord): number => {
-      const groupWins = (record as any).quad_wins ?? record.division_wins ?? 0;
-      const groupLosses = (record as any).quad_losses ?? record.division_losses ?? 0;
-      const groupTies = (record as any).quad_ties ?? record.division_ties ?? 0;
-      const total = groupWins + groupLosses + groupTies;
-      return total > 0 ? (groupWins + groupTies * 0.5) / total : 0;
-    };
-
     const sortedRecords = activeRecords.sort((a, b) => {
       // 1) Overall record (win %)
       if (a.win_percentage !== b.win_percentage) {
@@ -601,95 +733,129 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
 }
 
 /**
- * Calculate playoff seeds for a given season
- * For 2025: Seeds 1-4 are division winners, Seeds 5-8 are wildcards (non-division winners by total points)
- * Returns calculated seed results (does not save to database)
+ * True when a season already has playoff games recorded.
+ *
+ * Playoff results are stored as rounds (playoffs=true, week 1-3), so their
+ * presence means the bracket actually played out. For those seasons the games
+ * table is the historical record; anything `calculatePlayoffSeeds` derives is a
+ * recomputation from today's data and may not match what really happened —
+ * verified: the computed field diverges from the actual field for 2014 and 2018.
  */
-export async function calculatePlayoffSeeds(seasonYear: number): Promise<PlayoffSeedResult[]> {
+export async function hasRecordedPlayoffs(seasonYear: number): Promise<boolean> {
   try {
-    const standings = await calculateStandings(seasonYear);
-    const teams = await getTeams();
-    const leagueSeasons = await getLeagueSeasons();
-    
+    const { data, error } = await supabase
+      .from('games')
+      .select('week')
+      .eq('year', seasonYear)
+      .eq('playoffs', true)
+      .limit(1);
+
+    if (error) {
+      handleSupabaseError(error, 'hasRecordedPlayoffs');
+      return false;
+    }
+
+    return (data || []).length > 0;
+  } catch (error) {
+    handleSupabaseError(error, 'hasRecordedPlayoffs');
+    return false;
+  }
+}
+
+/**
+ * Calculate playoff seeds for a given season.
+ *
+ * Group (division/quad) winners take the top seeds, ordered against each other;
+ * wildcards fill the remaining spots. The field size and wildcard rule come from
+ * `getSeasonConfig`, so the shape adapts to however many groups the season has:
+ *   - 2025: 4 quad winners (seeds 1-4) + 4 wildcards by points (seeds 5-8)
+ *   - 2026: 2 division winners (seeds 1-2) + 4 wildcards by record (seeds 3-6)
+ *
+ * Returns calculated seed results; does not save to the database.
+ *
+ * Refuses seasons whose playoffs already happened, so projected seeds can't be
+ * mistaken for the historical bracket. Pass `allowCompletedSeason` when a
+ * projection over a finished season is genuinely what you want.
+ */
+export async function calculatePlayoffSeeds(
+  seasonYear: number,
+  options: { allowCompletedSeason?: boolean } = {}
+): Promise<PlayoffSeedResult[]> {
+  if (!options.allowCompletedSeason && (await hasRecordedPlayoffs(seasonYear))) {
+    throw new Error(
+      `${seasonYear} already has playoff games recorded, so these seeds would be a projection ` +
+        `rather than what actually happened — the real bracket is in the games table ` +
+        `(playoffs=true, week = round). Pass { allowCompletedSeason: true } to compute anyway.`
+    );
+  }
+
+  try {
+    const [standings, teams, leagueSeasons, games] = await Promise.all([
+      calculateStandings(seasonYear),
+      getTeams(),
+      getLeagueSeasons(),
+      getGames(seasonYear, undefined, undefined, false),
+    ]);
+
+    const config = getSeasonConfig(seasonYear);
     const currentLeagueSeason = leagueSeasons.find(ls => ls.year === seasonYear);
     const structureType = currentLeagueSeason?.structure_type || 'single_league';
-    
-    let divisions: Division[] = [];
-    let quads: Quad[] = [];
-    
-    if (structureType === 'divisions') {
-      divisions = await getDivisions();
-    } else if (structureType === 'quads') {
-      quads = await getQuads();
-    }
 
-    const useQuads = structureType === 'quads';
     const teamMap = new Map(teams.map(t => [t.team_id, t]));
-    
-    // Identify division/quad winners
-    const divisionWinners = new Set<number>();
-    
-    if (useQuads && standings.quads) {
-      Object.values(standings.quads).forEach(quadStandings => {
-        if (quadStandings.length > 0) {
-          divisionWinners.add(quadStandings[0].team_id);
-        }
-      });
-    } else if (standings.divisions) {
-      Object.values(standings.divisions).forEach(divStandings => {
-        if (divStandings.length > 0) {
-          divisionWinners.add(divStandings[0].team_id);
-        }
-      });
-    }
+    const h2h = buildHeadToHead(games);
 
-    // Get division winners sorted by overall record (for seeds 1-4)
-    const divisionWinnerRecords = standings.overall
-      .filter(record => divisionWinners.has(record.team_id))
-      .sort((a, b) => {
-        if (a.win_percentage !== b.win_percentage) {
-          return b.win_percentage - a.win_percentage;
-        }
-        return b.points_for - a.points_for;
-      });
+    // Group standings for whichever structure this season used.
+    const groups: TeamRecord[][] =
+      structureType === 'quads' && standings.quads
+        ? Object.values(standings.quads)
+        : structureType === 'divisions' && standings.divisions
+        ? Object.values(standings.divisions)
+        : [];
 
-    // Get wildcards (non-division winners sorted by total points including Week 14)
-    const wildcardRecords = standings.overall
-      .filter(record => !divisionWinners.has(record.team_id))
-      .sort((a, b) => b.points_for - a.points_for) // Sort by total points (includes Week 14 for 2025)
-      .slice(0, 4); // Top 4 wildcards
-
-    const seeds: PlayoffSeedResult[] = [];
-
-    // Seeds 1-4: Division winners
-    divisionWinnerRecords.forEach((record, index) => {
-      const team = teamMap.get(record.team_id);
-      if (team) {
-        seeds.push({
-          seed: index + 1,
-          team_id: record.team_id,
-          team,
-          teamRecord: record,
-          isDivisionWinner: true,
-          isWildcard: false,
-        });
+    // A group winner is the top team in its group under the full tiebreaker chain.
+    const groupWinners = new Set<number>();
+    groups.forEach(groupStandings => {
+      const ordered = sortForSeeding(groupStandings, h2h);
+      if (ordered.length > 0) {
+        groupWinners.add(ordered[0].team_id);
       }
     });
 
-    // Seeds 5-8: Wildcards
-    wildcardRecords.forEach((record, index) => {
+    const winnerRecords = sortForSeeding(
+      standings.overall.filter(record => groupWinners.has(record.team_id)),
+      h2h
+    );
+
+    const remainingSpots = Math.max(0, config.playoffTeams - winnerRecords.length);
+    const nonWinners = standings.overall.filter(record => !groupWinners.has(record.team_id));
+
+    const wildcardRecords = (
+      config.wildcardRule === 'points'
+        ? [...nonWinners].sort((a, b) => b.points_for - a.points_for)
+        : sortForSeeding(nonWinners, h2h)
+    ).slice(0, remainingSpots);
+
+    const toSeed = (
+      record: TeamRecord,
+      seed: number,
+      isGroupWinner: boolean
+    ): PlayoffSeedResult | null => {
       const team = teamMap.get(record.team_id);
-      if (team) {
-        seeds.push({
-          seed: index + 5,
-          team_id: record.team_id,
-          team,
-          teamRecord: record,
-          isDivisionWinner: false,
-          isWildcard: true,
-        });
-      }
-    });
+      if (!team) return null;
+      return {
+        seed,
+        team_id: record.team_id,
+        team,
+        teamRecord: record,
+        isDivisionWinner: isGroupWinner,
+        isWildcard: !isGroupWinner,
+      };
+    };
+
+    const seeds = [
+      ...winnerRecords.map((r, i) => toSeed(r, i + 1, true)),
+      ...wildcardRecords.map((r, i) => toSeed(r, winnerRecords.length + i + 1, false)),
+    ].filter((s): s is PlayoffSeedResult => s !== null);
 
     return seeds.sort((a, b) => a.seed - b.seed);
   } catch (error) {
@@ -699,16 +865,38 @@ export async function calculatePlayoffSeeds(seasonYear: number): Promise<Playoff
 }
 
 /**
- * Save playoff seeds to database with pod assignments
- * For 2025: Seeds 1-2 get pod=NULL (byes), Pod A = seeds 3,5,8, Pod B = seeds 4,6,7
+ * Save playoff seeds to database with pod assignments.
+ *
+ * Pods are a 2025-only concept: seeds 1-2 get pod=NULL (byes), Pod A = seeds
+ * 3,5,8 and Pod B = seeds 4,6,7. Every other season stores pod=NULL throughout.
+ *
+ * This deletes and re-inserts every seed row for the season, so it refuses
+ * seasons whose playoffs already happened — re-seeding those would silently
+ * replace the stored bracket with a recomputation from current data.
  */
-export async function savePlayoffSeeds(seasonYear: number): Promise<PlayoffSeedRow[]> {
+export async function savePlayoffSeeds(
+  seasonYear: number,
+  options: { force?: boolean } = {}
+): Promise<PlayoffSeedRow[]> {
+  if (!options.force && (await hasRecordedPlayoffs(seasonYear))) {
+    throw new Error(
+      `Refusing to re-seed ${seasonYear}: that season's playoffs are already recorded. ` +
+        `Saving now would replace the stored seeding with a recomputation from current data ` +
+        `(the stored 2025 rows, for example, predate later score corrections). ` +
+        `Pass { force: true } to override.`
+    );
+  }
+
   try {
-    // Calculate seeds
-    const calculatedSeeds = await calculatePlayoffSeeds(seasonYear);
-    
-    if (calculatedSeeds.length !== 8) {
-      throw new Error(`Expected 8 playoff seeds, got ${calculatedSeeds.length}`);
+    const config = getSeasonConfig(seasonYear);
+    // Guarded above: reaching here means the season is unfinished or force was set.
+    const calculatedSeeds = await calculatePlayoffSeeds(seasonYear, { allowCompletedSeason: true });
+
+    if (calculatedSeeds.length !== config.playoffTeams) {
+      throw new Error(
+        `Expected ${config.playoffTeams} playoff seeds for ${seasonYear}, got ${calculatedSeeds.length}. ` +
+          `Check that league_seasons and team_seasons are populated for this year.`
+      );
     }
 
     // Delete existing seeds for this season
@@ -721,10 +909,9 @@ export async function savePlayoffSeeds(seasonYear: number): Promise<PlayoffSeedR
       throw deleteError;
     }
 
-    // Determine pod assignments (only for 2025)
-    const is2025 = seasonYear === 2025;
+    // Determine pod assignments (pod-format seasons only)
     const getPod = (seed: number): 'A' | 'B' | null => {
-      if (!is2025) return null; // Pods only apply to 2025
+      if (!config.usesPods) return null;
       if (seed <= 2) return null; // Seeds 1-2 get byes
       if ([3, 5, 8].includes(seed)) return 'A';
       if ([4, 6, 7].includes(seed)) return 'B';

@@ -4,7 +4,7 @@
  */
 
 const SLEEPER_BASE_URL = 'https://api.sleeper.app/v1';
-const LEAGUE_ID = '1257480060521152513';
+const LEAGUE_ID = '1389689970226126848';
 
 export interface SleeperMatchup {
   starters: string[];

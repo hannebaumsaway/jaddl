@@ -5,6 +5,7 @@
 import { getMatchups, processMatchupsIntoGames } from './api';
 import { getTeamIdFromRosterId } from './mapping';
 import { insertGames, checkGamesExist, getHighestScoringTeam, awardTrophy, getTeamName } from '../supabase/games';
+import { getSeasonConfig } from '../supabase/api';
 
 export interface ImportResult {
   success: boolean;
@@ -27,6 +28,20 @@ export async function importWeekScores(
   week: number
 ): Promise<ImportResult> {
   try {
+    // Playoff results are recorded as rounds (week 1/2/3 with playoffs=true),
+    // not as NFL weeks, so importing week 15+ here would write rows that break
+    // that convention and corrupt standings.
+    const { regularSeasonWeeks } = getSeasonConfig(year);
+    if (week > regularSeasonWeeks) {
+      return {
+        success: false,
+        message:
+          `Week ${week} is past the ${year} regular season (weeks 1-${regularSeasonWeeks}). ` +
+          `Playoff games are stored as rounds 1-3 with playoffs=true and must be entered separately.`,
+        error: 'Week is outside the regular season',
+      };
+    }
+
     // Check if games already exist for this week
     const gamesExist = await checkGamesExist(year, week);
     if (gamesExist) {
@@ -66,16 +81,14 @@ export async function importWeekScores(
         throw new Error(`Unknown roster IDs: ${sleeperGame.away_roster_id}, ${sleeperGame.home_roster_id}`);
       }
 
-      // Special handling for 2025: Week 14 is not playoffs (it has special rules)
-      // For 2025: Week 14 = regular season (but doesn't count for division standings in logic)
-      //           Week 15+ = playoffs
-      // For other years: Week 14+ = playoffs (as before)
-      const isPlayoffs = year === 2025 ? week >= 15 : week >= 14;
-
+      // Weeks up to the season's regular-season length import as regular-season
+      // games. Playoff games are never stored by NFL week (see the round
+      // convention noted in getSeasonConfig), so this importer only ever writes
+      // playoffs=false and refuses weeks past the regular season above.
       return {
         year,
         week,
-        playoffs: isPlayoffs,
+        playoffs: false,
         away_team_id: awayTeamId,
         home_team_id: homeTeamId,
         away_score: sleeperGame.away_score,
