@@ -110,6 +110,25 @@ function render(b: GameBrief): string {
          (b.history.winnerScoreRankAllTime ? `, ${b.history.winnerScoreRankAllTime} all-time` : ''));
   if (b.clinch) L.push(`  CLINCH: ${b.clinch.groupName}, title #${b.clinch.titleNumber}`);
 
+  rule('PRECEDENT');
+  const c = b.cohorts;
+  const co = (label: string, x: typeof c.winnerRecord) =>
+    L.push(`  ${label} ${x.record} after wk${x.throughWeek}: ${x.count} such team-seasons ever, ` +
+           `${x.madePlayoffs} made playoffs, ${x.wonTitle} won it` +
+           (x.precedents.length ? `\n      e.g. ${x.precedents.slice(0,3).map(p => `${p.year} → ${p.finalRecord}${p.wonTitle ? ' (champ)' : p.madePlayoffs ? ' (playoffs)' : ''}`).join(', ')}` : ''));
+  co(`${b.result.winner.name}`, c.winnerRecord);
+  co(`${b.result.loser.name}`, c.loserRecord);
+  for (const [n, sl] of [[b.result.winner.name, c.winnerStart], [b.result.loser.name, c.loserStart]] as const) {
+    if (sl) L.push(`  ${n} start: ${sl.kind} ${sl.length} — ladder ${sl.ladder.slice(0,4).map(x => `${x.length}:${x.count}`).join(' ')}` +
+                   (sl.longest ? `, record ${sl.longest.length} (${sl.longest.year})` : ''));
+  }
+  L.push(`  combined ${c.game.combined}: rank ${c.game.combinedRankHigh} high / ${c.game.combinedRankLow} low of ${c.game.totalGames} games`);
+  L.push(`  margin: rank ${c.game.marginRankHigh} largest / ${c.game.marginRankLow} narrowest`);
+  for (const [n, sr] of [[b.result.winner.name, c.winnerStreak], [b.result.loser.name, c.loserStreak]] as const) {
+    if (sr) L.push(`  ${n} ${sr.kind}${sr.length}: ${sr.occurrences} runs that long ever` +
+                   (sr.longestEver ? `, record ${sr.longestEver.length} (${sr.longestEver.year})` : ''));
+  }
+
   rule(`ANGLES (${b.angles.length})`);
   if (b.angles.length === 0) L.push('  none computed');
   for (const a of b.angles) L.push(`  [${a.kind}] ${a.text}`);

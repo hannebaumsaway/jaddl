@@ -67,14 +67,14 @@ export async function loadLeagueHistory(): Promise<LeagueHistoryData> {
 
 /* --------------------------------------------------------------- records */
 
-interface Rec { w: number; l: number; t: number; pf: number }
+export interface Rec { w: number; l: number; t: number; pf: number }
 
 /**
  * Season records for every team, counting only games through `throughWeek`.
  * Uses countsTowardRecord so a season like 2025 — whose Week 14 play-in scored
  * points but no W-L — is handled the same way the standings page handles it.
  */
-function recordsForSeason(
+export function recordsForSeason(
   games: HistoryGame[],
   year: number,
   throughWeek: number
@@ -103,7 +103,7 @@ function recordsForSeason(
   return recs;
 }
 
-const winPct = (r: Rec) => {
+export const winPct = (r: Rec) => {
   const n = r.w + r.l + r.t;
   return n > 0 ? (r.w + r.t * 0.5) / n : 0;
 };

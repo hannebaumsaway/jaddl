@@ -25,6 +25,16 @@ import {
   type ClinchResult,
   type GroupTitle,
 } from './history';
+import {
+  recordCohort,
+  startLadder,
+  gameExtremes,
+  streakRarity,
+  type RecordCohort,
+  type StartLadder,
+  type GameExtremes,
+  type StreakRarity,
+} from './cohorts';
 
 /* ------------------------------------------------------------------ types */
 
@@ -123,6 +133,16 @@ export interface GameBrief {
   };
   /** Set when this result mathematically secured a division/quad title. */
   clinch: ClinchResult | null;
+  /** "Has this ever happened before" — precedent drawn from every season. */
+  cohorts: {
+    winnerRecord: RecordCohort;
+    loserRecord: RecordCohort;
+    winnerStart: StartLadder | null;
+    loserStart: StartLadder | null;
+    game: GameExtremes;
+    winnerStreak: StreakRarity | null;
+    loserStreak: StreakRarity | null;
+  };
   angles: BriefAngle[];
 }
 
@@ -505,12 +525,34 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
     loserScoreRankInSeason: loserScoreCtx.rankInSeason,
   };
 
+  /* ----------------------------------------- cohorts: precedent and rarity */
+  const parseRec = (r: string) => r.split('-').map(Number);
+  const [ww, wl, wt] = parseRec(winner.recordAfter);
+  const [lw, ll, lt] = parseRec(loser.recordAfter);
+  const streakOf = (s: string): StreakRarity | null => {
+    const m = /^([WL])(\d+)$/.exec(s);
+    return m && Number(m[2]) >= 3
+      ? streakRarity(history, m[1] as 'W' | 'L', Number(m[2]))
+      : null;
+  };
+
+  const cohorts = {
+    winnerRecord: recordCohort(history, year, week, ww, wl, wt, championships),
+    loserRecord: recordCohort(history, year, week, lw, ll, lt, championships),
+    winnerStart: startLadder(history, year, week, winnerId),
+    loserStart: startLadder(history, year, week, loserId),
+    game: gameExtremes(history, winnerScore, loserScore),
+    winnerStreak: streakOf(winner.streakAfter),
+    loserStreak: streakOf(loser.streakAfter),
+  };
+
   /* ------------------------------------------------------------- angles */
   const angles = deriveAngles({
     winner, loser, margin, isTie,
     beforeWinnerWins: bw, beforeLoserWins: bl,
     rivalry, weekScores, weekMargins, lineups,
-    clinch, history: historyBlock, year, teamNameById: id => teams.get(id)?.team_name ?? `Team ${id}`,
+    clinch, history: historyBlock, cohorts, year, week,
+    teamNameById: id => teams.get(id)?.team_name ?? `Team ${id}`,
   });
 
   return {
@@ -547,6 +589,7 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
     owners,
     history: historyBlock,
     clinch,
+    cohorts,
     angles,
   };
 }
@@ -651,7 +694,9 @@ interface AngleInput {
   lineups: GameBrief['lineups'];
   clinch: ClinchResult | null;
   history: GameBrief['history'];
+  cohorts: GameBrief['cohorts'];
   year: number;
+  week: number;
   teamNameById: (id: number) => string;
 }
 
@@ -794,6 +839,103 @@ function deriveAngles(i: AngleInput): BriefAngle[] {
       kind: 'losing-score-was-elite',
       text: `${loser.name} lost with the ${ordinal(i.history.loserScoreRankInSeason)}-highest score of the season.`,
     });
+  }
+
+  /* ---- precedent: the "has this ever happened" material ---- */
+
+  for (const [side, cohort] of [[winner, i.cohorts.winnerRecord], [loser, i.cohorts.loserRecord]] as const) {
+    // Only interesting once there is a season's worth of games behind it, and
+    // only when the cohort is small enough to mean something.
+    if (i.week < 4 || cohort.count === 0) continue;
+    if (cohort.count <= 6) {
+      const others = cohort.precedents.filter(p => !(p.year === i.year && p.teamId === side.teamId));
+      a.push({
+        kind: 'record-cohort-rare',
+        text: `Only ${cohort.count} team${cohort.count === 1 ? ' has' : 's have'} been ${cohort.record} after week ${i.week} in league history` +
+              (others.length
+                ? `; the others: ${others.map(p => `${i.teamNameById(p.teamId)} ${p.year} (finished ${p.finalRecord}${p.wonTitle ? ', won it' : p.madePlayoffs ? ', made playoffs' : ''})`).join('; ')}.`
+                : '.'),
+      });
+    } else if (cohort.madePlayoffs === 0) {
+      a.push({
+        kind: 'record-cohort-doom',
+        text: `No team has ever made the postseason from ${cohort.record} after week ${i.week} — ${cohort.count} have tried.`,
+      });
+    } else if (cohort.madePlayoffs <= Math.max(2, cohort.count * 0.2)) {
+      a.push({
+        kind: 'record-cohort-longshot',
+        text: `${cohort.madePlayoffs} of the ${cohort.count} teams ever ${cohort.record} after week ${i.week} went on to make the postseason.`,
+      });
+    }
+  }
+
+  for (const [side, ladder] of [[winner, i.cohorts.winnerStart], [loser, i.cohorts.loserStart]] as const) {
+    if (!ladder) continue;
+    const here = ladder.ladder.find(x => x.length === ladder.length);
+    // A 3-0 start has 32 precedents — that is not a fact worth a paragraph.
+    // Fire only when the company is small, or the record is in reach.
+    const isRare = (here?.count ?? 99) <= 8;
+    const nearRecord = !!ladder.longest && ladder.length >= ladder.longest.length - 1;
+    if (!isRare && !nearRecord) continue;
+    const verb = ladder.kind === 'winless' ? 'started 0-' : 'opened ';
+    const rungs = ladder.ladder.slice(0, 4)
+      .map(x => `${x.count} ${x.count === 1 ? 'team has' : 'teams have'} ${verb}${x.length}${ladder.kind === 'unbeaten' ? '-0' : ''}`)
+      .join('; ');
+    a.push({
+      kind: ladder.kind === 'winless' ? 'winless-start' : 'unbeaten-start',
+      text: `${side.name} is ${ladder.kind === 'winless' ? `0-${ladder.length}` : `${ladder.length}-0`} to open the season. ` +
+            `${rungs}.` +
+            (ladder.longest ? ` The record is ${ladder.longest.length}, by ${i.teamNameById(ladder.longest.teamId)} in ${ladder.longest.year}.` : '') +
+            '',
+    });
+  }
+
+  const ge = i.cohorts.game;
+  // "first-lowest" is not English; rank 1 is simply "the lowest".
+  const superlative = (rank: number, sup: string) =>
+    rank === 1 ? `the ${sup}` : `the ${ordinal(rank)}-${sup}`;
+
+  if (ge.combinedRankHigh <= 5) {
+    a.push({
+      kind: 'combined-score-extreme',
+      text: `The ${ge.combined} points scored between them is ${superlative(ge.combinedRankHigh, 'highest')} of any game in league history (${ge.totalGames} games).`,
+    });
+  }
+  if (ge.combinedRankLow <= 5) {
+    // Citing "the worst remains ..." when this game IS the worst is circular.
+    const isTheWorst = ge.combinedRankLow === 1;
+    a.push({
+      kind: 'combined-score-low',
+      text: `The ${ge.combined} points scored between them is ${superlative(ge.combinedRankLow, 'lowest')} of any game ever` +
+            (isTheWorst
+              ? ` — the worst game in ${ge.totalGames} played.`
+              : ge.worstEver
+              ? `; the worst remains ${ge.worstEver.year} week ${ge.worstEver.week}, ${ge.worstEver.home}–${ge.worstEver.away}.`
+              : '.'),
+    });
+  }
+  if (ge.marginRankHigh <= 5) {
+    a.push({
+      kind: 'margin-extreme',
+      text: `The ${margin}-point margin is ${superlative(ge.marginRankHigh, 'largest')} in league history.`,
+    });
+  }
+  if (ge.marginRankLow <= 5) {
+    a.push({
+      kind: 'margin-narrow',
+      text: `The ${margin}-point margin is ${superlative(ge.marginRankLow, 'narrowest')} in league history.`,
+    });
+  }
+
+  for (const [side, sr] of [[winner, i.cohorts.winnerStreak], [loser, i.cohorts.loserStreak]] as const) {
+    if (!sr) continue;
+    if (sr.occurrences <= 8 || (sr.longestEver && sr.length >= sr.longestEver.length)) {
+      a.push({
+        kind: sr.kind === 'W' ? 'win-streak-rare' : 'lose-streak-rare',
+        text: `${side.name}'s ${sr.length}-game ${sr.kind === 'W' ? 'winning' : 'losing'} run is one of only ${sr.occurrences} that long in league history` +
+              (sr.longestEver ? `; the longest is ${sr.longestEver.length}, by ${i.teamNameById(sr.longestEver.teamId)} in ${sr.longestEver.year}.` : '.'),
+      });
+    }
   }
 
   // "Battle of the 30-bombs" — the pattern across both lineups, not one player.
