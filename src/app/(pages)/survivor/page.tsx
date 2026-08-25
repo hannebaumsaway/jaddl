@@ -14,12 +14,13 @@ export const metadata: Metadata = {
 };
 
 interface SurvivorPageProps {
-  searchParams: { year?: string };
+  searchParams: Promise<{ year?: string }>;
 }
 
-export default async function SurvivorPage({ searchParams }: SurvivorPageProps) {
+export default async function SurvivorPage(props: SurvivorPageProps) {
+  const searchParams = await props.searchParams;
   const selectedYear = searchParams.year ? parseInt(searchParams.year) : new Date().getFullYear();
-  
+
   // Get survivor data and team profiles
   const [survivorData, availableYears, teamProfiles] = await Promise.all([
     getSurvivorData(selectedYear),
@@ -37,7 +38,7 @@ export default async function SurvivorPage({ searchParams }: SurvivorPageProps) 
   // Get all teams with their elimination status
   const allTeams = survivorData[0]?.teams || [];
   const teamEliminationMap = new Map<number, number | null>();
-  
+
   // Find when each team was eliminated
   for (const weekData of survivorData) {
     if (weekData.eliminationWeek) {

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    cookies().set(ADMIN_SESSION_COOKIE, sessionToken, SESSION_COOKIE_OPTIONS);
+    (await cookies()).set(ADMIN_SESSION_COOKIE, sessionToken, SESSION_COOKIE_OPTIONS);
 
     return NextResponse.json({ success: true });
   } catch (error) {

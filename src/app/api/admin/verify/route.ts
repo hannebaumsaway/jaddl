@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * even if the matcher changes, rather than relying on one layer.
  */
 export async function GET() {
-  const session = await verifySessionToken(cookies().get(ADMIN_SESSION_COOKIE)?.value);
+  const session = await verifySessionToken((await cookies()).get(ADMIN_SESSION_COOKIE)?.value);
 
   if (!session) {
     return NextResponse.json({ message: 'Invalid session' }, { status: 401 });

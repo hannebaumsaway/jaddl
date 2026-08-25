@@ -15,10 +15,11 @@ export const metadata: Metadata = {
 };
 
 interface StandingsPageProps {
-  searchParams: { year?: string };
+  searchParams: Promise<{ year?: string }>;
 }
 
-export default async function StandingsPage({ searchParams }: StandingsPageProps) {
+export default async function StandingsPage(props: StandingsPageProps) {
+  const searchParams = await props.searchParams;
   // Get season year from URL or current season
   const urlYear = searchParams.year ? parseInt(searchParams.year) : null;
   const currentSeason = await getCurrentSeason();
@@ -27,11 +28,11 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
   // Fetch data
   const contentfulTeams = await getTeamProfiles();
   const standings = await calculateStandings(seasonYear);
-  
+
   // Get league structure info for this specific year
   const leagueSeasons = await getLeagueSeasons();
   const currentLeagueSeason = leagueSeasons.find(ls => ls.year === seasonYear);
-  
+
   // Get available years from league_seasons data
   const availableYears = leagueSeasons.map(ls => ls.year).sort((a, b) => b - a);
 

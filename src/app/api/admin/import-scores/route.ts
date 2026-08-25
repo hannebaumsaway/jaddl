@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     // This endpoint writes games to the database, so it checks the session
     // itself rather than trusting the middleware matcher alone.
-    const session = await verifySessionToken(cookies().get(ADMIN_SESSION_COOKIE)?.value);
+    const session = await verifySessionToken((await cookies()).get(ADMIN_SESSION_COOKIE)?.value);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
