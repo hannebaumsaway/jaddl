@@ -44,7 +44,8 @@ All queries live in `src/lib/`; pages are server components that call these and 
 - `src/lib/supabase/api.ts` — the big one (~1300 lines): teams, games, standings, playoff seeds/pods, trophies, drafts, survivor.
 - `src/lib/supabase/history.ts` — all-time records, champions, streaks (`getLeagueHistory`).
 - `src/lib/supabase/games.ts` — writes: `insertGames`, `awardTrophy`, `checkGamesExist`.
-- `src/lib/supabase/scores.ts` — `getMostRecentWeek()`, used to default the scores/standings pages to the latest week.
+- `src/lib/supabase/scores.ts` — `getMostRecentWeek()`, `getSeasonWeekOptions(year)` and `getScoreboardGames(query)`. The scores page used to build its own `supabase.from('games')` query inline; it now goes through here like every other page. `getMostRecentWeek` orders by (year, playoffs, week) because playoff `week` is a round — a plain week sort ranks the championship below regular-season week 14.
+- `src/lib/utils/scores.ts` — pure derivations: `enhanceGamesWithTeamProfiles` (Contentful display data onto game rows) and `summarizeGames` (avg/median/high score, narrowest and biggest margin). No I/O, so any surface can reuse them.
 - `src/lib/contentful/api.ts` — article/team/trophy fetching plus the "Processed*" mappers.
 - `src/lib/sleeper/` — Sleeper API client (`api.ts`), roster-ID→team-ID map (`mapping.ts`), and `import-service.ts` which fetches a week's matchups, inserts games, and awards the weekly high-score trophy.
 
@@ -59,6 +60,19 @@ The DB column names differ from `supabase-setup.md` (that file is aspirational/o
 - `playoff_seeds` *does* use `season_year` (it's the newest table).
 
 Because `database.types.ts` is only partially accurate, `api.ts` casts queries to `any` in several places — that's deliberate, not sloppiness to "clean up."
+
+### Current season vs configured season
+
+`getSeasonState()` in `api.ts` separates the newest row in `league_seasons`
+(`configuredSeason`) from the newest season that actually has games
+(`activeSeason`), with `hasStarted` telling them apart. `getCurrentSeason()`
+returns `activeSeason`.
+
+This matters because adding next year's `league_seasons` row used to flip the
+whole site to it immediately — for the ~8 months between the championship and
+Week 1 the standings page and the home page rendered empty tables. Use
+`hasStarted` to drive offseason UI rather than assuming the newest configured
+season is being played.
 
 ### League structure is per-season and data-driven
 
@@ -75,7 +89,7 @@ Because `database.types.ts` is only partially accurate, `api.ts` casts queries t
 
 Note the standings *display* still sorts by record → division/quad record → points, without head-to-head. That's deliberate for now; the h2h chain applies to playoff seeding only.
 
-Two year-specific branches remain in `scores/page.tsx` for 2025 display only; they no-op for other seasons.
+Playoff round labels come from `getPlayoffRoundLabel(round)` / `getGameWeekLabel(game)` in `api.ts` — round 1 = Quarterfinals, 2 = Semifinals, 3 = Championship, year-independent. `scores/page.tsx` previously carried four copies of a variant that special-cased 2025 as weeks 15/16/17; since playoff `week` holds the round and never exceeds 3, those branches never matched and rendered "Playoff Week 2" in the heading while the week selector said "Semifinals" for the same game.
 
 `playoff_seeds` is written once per season via `savePlayoffSeeds(year)` after the regular season ends.
 

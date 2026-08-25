@@ -378,6 +378,85 @@ export function countsTowardRecord(game: Game, config: SeasonConfig): boolean {
   return true;
 }
 
+/**
+ * Label for a playoff game. `week` on a playoff game holds the ROUND, not the
+ * NFL week — 1 = quarterfinal, 2 = semifinal, 3 = championship, every season
+ * since 2007.
+ *
+ * This is deliberately year-independent. `scores/page.tsx` used to carry four
+ * copies of a variant that special-cased 2025 as weeks 15/16/17; since no
+ * playoff game is ever stored with a week above 3, those branches never
+ * matched and silently produced "Playoff Week 2" in the page heading while the
+ * week selector — which used the round mapping — said "Semifinals" for the
+ * same game.
+ */
+export function getPlayoffRoundLabel(round: number): string {
+  switch (round) {
+    case 1: return 'Quarterfinals';
+    case 2: return 'Semifinals';
+    case 3: return 'Championship';
+    default: return `Playoff Week ${round}`;
+  }
+}
+
+/** Label for any game, playoff or regular. */
+export function getGameWeekLabel(game: Pick<Game, 'week' | 'playoffs'>): string {
+  return game.playoffs ? getPlayoffRoundLabel(game.week) : `Week ${game.week}`;
+}
+
+export interface SeasonState {
+  /** Newest row in league_seasons — may be configured but not yet played. */
+  configuredSeason: LeagueSeason | null;
+  /** Newest season that actually has games. What the site should display. */
+  activeSeason: LeagueSeason | null;
+  /** Whether configuredSeason has any recorded games. */
+  hasStarted: boolean;
+}
+
+/**
+ * Distinguishes "the season we have set up" from "the season being played".
+ *
+ * Creating next year's league_seasons row used to flip the whole site to that
+ * year immediately, so between the championship and Week 1 — roughly eight
+ * months — standings rendered empty. Callers that just want something to show
+ * should use `activeSeason`; `hasStarted` is the hook for offseason UI.
+ */
+export async function getSeasonState(): Promise<SeasonState> {
+  try {
+    const { data: seasons, error } = await supabase
+      .from('league_seasons')
+      .select('*')
+      .order('year', { ascending: false });
+
+    if (error) handleSupabaseError(error, 'getSeasonState');
+    const ordered = (seasons || []) as LeagueSeason[];
+    if (ordered.length === 0) {
+      return { configuredSeason: null, activeSeason: null, hasStarted: false };
+    }
+
+    const { data: playedYears, error: gamesError } = await supabase
+      .from('games')
+      .select('year')
+      .order('year', { ascending: false })
+      .limit(1000);
+
+    if (gamesError) handleSupabaseError(gamesError, 'getSeasonState');
+    const played = new Set((playedYears || []).map((g: any) => g.year));
+
+    const configuredSeason = ordered[0];
+    const activeSeason = ordered.find(s => played.has(s.year)) ?? configuredSeason;
+
+    return {
+      configuredSeason,
+      activeSeason,
+      hasStarted: played.has(configuredSeason.year),
+    };
+  } catch (error) {
+    handleSupabaseError(error, 'getSeasonState');
+    return { configuredSeason: null, activeSeason: null, hasStarted: false };
+  }
+}
+
 /** Win pct within a team's division/quad, whichever the season uses. */
 function getGroupWinPct(record: TeamRecord): number {
   const groupWins = (record as any).quad_wins ?? record.division_wins ?? 0;
@@ -1154,27 +1233,20 @@ export async function getTeamSeasons(seasonYear?: number): Promise<TeamSeason[]>
 }
 
 // League Seasons
+/**
+ * The season the site should show by default: the newest season that has
+ * games, NOT simply the newest row in league_seasons.
+ *
+ * This used to be `max(year)`, so adding next year's row flipped every page to
+ * a season with no games in it — standings rendered an empty table for the
+ * ~8 months between the championship and Week 1.
+ *
+ * Use `getSeasonState()` when you need to tell "configured" from "started",
+ * e.g. to switch the home page into offseason mode.
+ */
 export async function getCurrentSeason(): Promise<LeagueSeason | null> {
-  try {
-    // Get the most recent season (since is_current column doesn't exist)
-    const { data, error } = await supabase
-      .from('league_seasons')
-      .select('*')
-      .order('year', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) {
-      // If still no data, return null
-      if (error.code === 'PGRST116') return null;
-      handleSupabaseError(error, 'getCurrentSeason');
-    }
-
-    return data;
-  } catch (error) {
-    handleSupabaseError(error, 'getCurrentSeason');
-    return null;
-  }
+  const { activeSeason } = await getSeasonState();
+  return activeSeason;
 }
 
 export async function getLeagueSeasons(): Promise<LeagueSeason[]> {
