@@ -10,18 +10,21 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import NavigationControls from '@/components/scores/NavigationControls';
 import { TeamSelectorWrapper } from '@/components/scores/TeamSelectorWrapper';
 
-export async function generateMetadata({ searchParams }: {
-  searchParams: { year?: string; week?: string; playoffs?: string; team1?: string; team2?: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    searchParams: Promise<{ year?: string; week?: string; playoffs?: string; team1?: string; team2?: string }>;
+  }
+): Promise<Metadata> {
+  const searchParams = await props.searchParams;
   // Get the most recent available week as default
   const mostRecentWeek = await getMostRecentWeek();
   const contentfulTeams = await getTeamProfiles();
-  
+
   // Get year, week, and playoffs from URL params, defaulting to most recent week
   const seasonYear = parseInt(searchParams.year || mostRecentWeek.year.toString());
   const currentWeek = parseInt(searchParams.week || mostRecentWeek.week.toString());
   const isPlayoffs = searchParams.playoffs === 'true' || (searchParams.playoffs === undefined && mostRecentWeek.isPlayoff);
-  
+
   // Get team filtering parameters
   const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
   const team2Id = searchParams.team2 && searchParams.team2 !== 'all' ? parseInt(searchParams.team2) : null;
@@ -87,19 +90,20 @@ export async function generateMetadata({ searchParams }: {
   };
 };
 
-export default async function ScoresPage({
-  searchParams,
-}: {
-  searchParams: { year?: string; week?: string; playoffs?: string; team1?: string; team2?: string };
-}) {
+export default async function ScoresPage(
+  props: {
+    searchParams: Promise<{ year?: string; week?: string; playoffs?: string; team1?: string; team2?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // Get the most recent available week as default
   const mostRecentWeek = await getMostRecentWeek();
-  
+
   // Get year, week, and playoffs from URL params, defaulting to most recent week
   const seasonYear = parseInt(searchParams.year || mostRecentWeek.year.toString());
   const currentWeek = parseInt(searchParams.week || mostRecentWeek.week.toString());
   const isPlayoffs = searchParams.playoffs === 'true' || (searchParams.playoffs === undefined && mostRecentWeek.isPlayoff);
-  
+
   // Get team filtering parameters
   const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
   const team2Id = searchParams.team2 && searchParams.team2 !== 'all' ? parseInt(searchParams.team2) : null;
@@ -111,7 +115,7 @@ export default async function ScoresPage({
 
   // Fetch actual games from Supabase
   let query = supabase.from('games').select('*');
-  
+
   if (isAllGames) {
     // For all games of a single team, show all games across all years in descending order
     query = query.or(`home_team_id.eq.${team1Id},away_team_id.eq.${team1Id}`);
@@ -127,7 +131,7 @@ export default async function ScoresPage({
       query = query.eq('playoffs', isPlayoffs);
     }
   }
-  
+
   const { data: games } = await query.order('year', { ascending: false }).order('week', { ascending: false });
 
   const actualGames = games || [];
@@ -140,12 +144,12 @@ export default async function ScoresPage({
     .order('week', { ascending: false });
 
   const availableYears = Array.from(new Set(availableData?.map((g: any) => g.year) || []));
-  
+
   // Separate regular season and playoff weeks, then combine them properly
   const seasonGames = availableData?.filter((g: any) => g.year === seasonYear) || [];
   const regularSeasonWeeks = Array.from(new Set(seasonGames.filter((g: any) => !g.playoffs).map((g: any) => g.week))).sort((a, b) => a - b);
   const playoffWeeks = Array.from(new Set(seasonGames.filter((g: any) => g.playoffs).map((g: any) => g.week))).sort((a, b) => a - b);
-  
+
   // Create unique week identifiers to prevent duplicates
   const availableWeeks = [
     ...regularSeasonWeeks.map(week => ({ week, isPlayoff: false })),
@@ -209,7 +213,7 @@ export default async function ScoresPage({
   const narrowestMargin = gamesWithMargins.length > 0 
     ? gamesWithMargins.reduce((min, game) => game.margin < min.margin ? game : min)
     : null;
-  
+
   const biggestMargin = gamesWithMargins.length > 0 
     ? gamesWithMargins.reduce((max, game) => game.margin > max.margin ? game : max)
     : null;

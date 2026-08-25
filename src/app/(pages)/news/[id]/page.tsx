@@ -5,9 +5,9 @@ import { getJaddlArticleById, getJaddlArticleBySlug } from '@/lib/contentful/api
 import { ArticleDetailClient } from './article-detail-client';
 
 interface ArticlePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 async function getArticle(identifier: string) {
@@ -22,9 +22,10 @@ async function getArticle(identifier: string) {
   return article;
 }
 
-export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
+export async function generateMetadata(props: ArticlePageProps): Promise<Metadata> {
+  const params = await props.params;
   const article = await getArticle(params.id);
-  
+
   if (!article) {
     return {
       title: 'Article Not Found',
@@ -74,7 +75,8 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   };
 }
 
-export default async function ArticlePage({ params }: ArticlePageProps) {
+export default async function ArticlePage(props: ArticlePageProps) {
+  const params = await props.params;
   const article = await getArticle(params.id);
 
   if (!article) {

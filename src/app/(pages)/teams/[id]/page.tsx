@@ -33,15 +33,16 @@ import {
 import { getTrophies } from '@/lib/contentful/api';
 
 interface TeamDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export async function generateMetadata({ params }: TeamDetailPageProps): Promise<Metadata> {
+export async function generateMetadata(props: TeamDetailPageProps): Promise<Metadata> {
+  const params = await props.params;
   const contentfulTeams = await getTeamProfiles();
   const team = contentfulTeams.find(t => t.teamId.toString() === params.id);
-  
+
   if (!team) {
     return {
       title: 'Team Not Found',
@@ -92,10 +93,11 @@ export async function generateMetadata({ params }: TeamDetailPageProps): Promise
   };
 }
 
-export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
+export default async function TeamDetailPage(props: TeamDetailPageProps) {
+  const params = await props.params;
   const contentfulTeams = await getTeamProfiles();
   const team = contentfulTeams.find(t => t.teamId.toString() === params.id);
-  
+
   if (!team) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -112,7 +114,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   const allTeamRecords = await getAllTimeTeamRecords(); // Get all years
   const allGames = await getGames(); // Get all years
   const teamSeasons = await getTeamSeasons();
-  
+
   // Get the most recent year that has games played
   const currentYear = allGames.length > 0 
     ? Math.max(...allGames.map(g => g.year || 0))
@@ -120,10 +122,10 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   const divisions = await getDivisions();
   const quads = await getQuads();
   const trophyCaseData = await getTrophyCase(undefined, team.teamId); // Get all trophies for this team
-  
+
   // Get all trophies from Contentful to match with trophy_case data
   const allTrophies = await getTrophies();
-  
+
   // Join trophy_case data with Contentful trophy data
   const trophyCase = trophyCaseData.map(trophy => {
     const contentfulTrophy = allTrophies.find(t => t.trophyId === trophy.trophy_id);
@@ -134,24 +136,24 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
       trophyImage: contentfulTrophy?.trophyImage?.url || null
     };
   });
-  
+
   // Filter team records for this specific team across all years
   const allTeamRecordsForTeam = allTeamRecords.filter(r => r.team_id === team.teamId);
-  
+
   // Filter games for this specific team across all years
   const allTeamGames = allGames.filter(g => 
     g.home_team_id === team.teamId || g.away_team_id === team.teamId
   );
-  
+
   // Filter team seasons for this specific team
   const currentTeamSeasons = teamSeasons.filter(ts => ts.team_id === team.teamId);
-  
+
   // Get current season data
   const currentTeamRecords = allTeamRecordsForTeam.filter(r => r.year === currentYear);
 
   // Calculate current season stats
   const currentSeasonRecord = currentTeamRecords.find(r => r.year === currentYear);
-  
+
   // Get current quad/division info
   const currentSeason = currentTeamSeasons.find(ts => ts.year === currentYear);
   const currentQuad = currentSeason?.quad_id ? quads.find(q => q.quad_id === currentSeason.quad_id) : null;
@@ -263,7 +265,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   // Find current team's ranking
   const currentTeamRank = uniqueLeagueAverages.findIndex(team => team.teamId === parseInt(params.id)) + 1;
   const totalTeams = uniqueLeagueAverages.length;
-  
+
   // Generate ranking text
   const getRankingText = (rank: number, total: number) => {
     if (rank === 1) return "League best";
@@ -334,7 +336,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
 
   // Calculate achievements and records (all-time and current season)
   const achievements = [];
-  
+
   // Current season achievements
   if (currentSeasonRecord) {
     if (currentSeasonRecord.win_percentage > 0.8) {

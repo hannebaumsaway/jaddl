@@ -42,7 +42,11 @@ export async function POST(request: NextRequest) {
     const path = searchParams.get('path');
 
     if (tag) {
-      revalidateTag(tag);
+      // Next 16 requires a cacheLife profile. 'max' gives stale-while-revalidate:
+      // readers keep seeing the cached article while the fresh one loads. The
+      // read-your-writes alternative (updateTag) is Server-Action-only, and this
+      // is a Contentful webhook, so 'max' is the right trade here.
+      revalidateTag(tag, 'max');
       return NextResponse.json({ revalidated: true, tag, now: Date.now() });
     }
 
