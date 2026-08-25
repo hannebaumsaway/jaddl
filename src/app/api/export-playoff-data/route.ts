@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { calculateStandings, calculatePlayoffSeeds, savePlayoffSeeds, getPlayoffSeeds, getPlayoffPods, getSeasonConfig } from '@/lib/supabase/api';
 import { getGames } from '@/lib/supabase/api';
 import { getTeams } from '@/lib/supabase/api';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Reads only — the shared anon client is correct here. This route previously
+// built its own client falling back from the service key to the anon key,
+// which meant a service key, if present, was used for plain reads too.
+import { supabase } from '@/lib/supabase/client';
 
 export async function GET(request: Request) {
   try {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     if (week !== null && week > 0) {
       currentWeek = week;
     } else {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('games')
         .select('week')
         .eq('year', year)
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const standings = standingsData.overall;
 
     // Get league season info
-    const { data: leagueSeason } = await supabase
+    const { data: leagueSeason } = await (supabase as any)
       .from('league_seasons')
       .select('*')
       .eq('year', year)
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
     const h2h = Array.from(h2hMap.values()).filter(r => r.games.length > 0);
 
     // Get remaining schedule (with team names for display)
-    const { data: remainingGamesWithTeamsFromDb } = await supabase
+    const { data: remainingGamesWithTeamsFromDb } = await (supabase as any)
       .from('games')
       .select('*, home_team:teams!home_team_id(team_name), away_team:teams!away_team_id(team_name)')
       .eq('year', year)
