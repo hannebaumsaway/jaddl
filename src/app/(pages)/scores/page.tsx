@@ -3,8 +3,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { getTeamProfiles } from '@/lib/contentful/api';
-import { supabase } from '@/lib/supabase/client';
-import { getMostRecentWeek } from '@/lib/supabase/scores';
+import { getPlayoffRoundLabel, getGameWeekLabel } from '@/lib/supabase/api';
+import {
+  getMostRecentWeek,
+  getSeasonWeekOptions,
+  getScoreboardGames,
+  type ScoreboardQuery,
+} from '@/lib/supabase/scores';
+import { enhanceGamesWithTeamProfiles, summarizeGames } from '@/lib/utils/scores';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import NavigationControls from '@/components/scores/NavigationControls';
@@ -23,7 +29,12 @@ export async function generateMetadata(
   // Get year, week, and playoffs from URL params, defaulting to most recent week
   const seasonYear = parseInt(searchParams.year || mostRecentWeek.year.toString());
   const currentWeek = parseInt(searchParams.week || mostRecentWeek.week.toString());
-  const isPlayoffs = searchParams.playoffs === 'true' || (searchParams.playoffs === undefined && mostRecentWeek.isPlayoff);
+  // Only inherit the default week's playoff flag when the week itself was also
+  // defaulted. An explicit ?week=13 with no ?playoffs means the regular-season
+  // week 13, never playoff round 13.
+  const isPlayoffs =
+    searchParams.playoffs === 'true' ||
+    (searchParams.playoffs === undefined && searchParams.week === undefined && mostRecentWeek.isPlayoff);
 
   // Get team filtering parameters
   const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
@@ -48,26 +59,9 @@ export async function generateMetadata(
       description = `Historical head-to-head matchups between ${team1.teamName} and ${team2.teamName} in the JADDL fantasy football league.`;
     }
   } else {
-    // Special handling for 2025 playoff structure
-    const getPlayoffWeekLabel = (week: number, year: number) => {
-      if (year === 2025) {
-        // 2025: Week 15 = Pods, Week 16 = Semifinals, Week 17 = Championship
-        if (week === 15) return 'Pod Round';
-        if (week === 16) return 'Semifinals';
-        if (week === 17) return 'Championship';
-        return `Playoff Week ${week}`;
-      } else {
-        // Standard: Week 1 = Quarterfinals, Week 2 = Semifinals, Week 3 = Championship
-        if (week === 1) return 'Quarterfinals';
-        if (week === 2) return 'Semifinals';
-        if (week === 3) return 'Championship';
-        return `Playoff Week ${week}`;
-      }
-    };
-    
-    const weekType = isPlayoffs ? 
-      getPlayoffWeekLabel(currentWeek, seasonYear) : 
-      `Week ${currentWeek}`;
+    const weekType = isPlayoffs
+      ? getPlayoffRoundLabel(currentWeek)
+      : `Week ${currentWeek}`;
     title = `${seasonYear} ${weekType} Scores`;
     description = `${seasonYear} Season ${weekType} matchup scores and results for the JADDL fantasy football league.`;
   }
@@ -102,7 +96,12 @@ export default async function ScoresPage(
   // Get year, week, and playoffs from URL params, defaulting to most recent week
   const seasonYear = parseInt(searchParams.year || mostRecentWeek.year.toString());
   const currentWeek = parseInt(searchParams.week || mostRecentWeek.week.toString());
-  const isPlayoffs = searchParams.playoffs === 'true' || (searchParams.playoffs === undefined && mostRecentWeek.isPlayoff);
+  // Only inherit the default week's playoff flag when the week itself was also
+  // defaulted. An explicit ?week=13 with no ?playoffs means the regular-season
+  // week 13, never playoff round 13.
+  const isPlayoffs =
+    searchParams.playoffs === 'true' ||
+    (searchParams.playoffs === undefined && searchParams.week === undefined && mostRecentWeek.isPlayoff);
 
   // Get team filtering parameters
   const team1Id = searchParams.team1 ? parseInt(searchParams.team1) : null;
@@ -113,110 +112,28 @@ export default async function ScoresPage(
   // Fetch teams from Contentful for logos/names
   const contentfulTeams = await getTeamProfiles();
 
-  // Fetch actual games from Supabase
-  let query = supabase.from('games').select('*');
+  // Games for whichever of the three views is active.
+  const scoreboardQuery: ScoreboardQuery = isAllGames
+    ? { mode: 'allGames', teamId: team1Id! }
+    : isHeadToHead
+    ? { mode: 'headToHead', teamId: team1Id!, opponentId: team2Id! }
+    : { mode: 'week', year: seasonYear, week: currentWeek, isPlayoffs };
 
-  if (isAllGames) {
-    // For all games of a single team, show all games across all years in descending order
-    query = query.or(`home_team_id.eq.${team1Id},away_team_id.eq.${team1Id}`);
-  } else if (isHeadToHead) {
-    // For head-to-head, show all games between the two teams across all years
-    query = query.or(`and(home_team_id.eq.${team1Id},away_team_id.eq.${team2Id}),and(home_team_id.eq.${team2Id},away_team_id.eq.${team1Id})`);
-  } else {
-    // Normal weekly view
-    query = query.eq('year', seasonYear).eq('week', currentWeek);
-    
-    // Filter by playoffs if the parameter is provided
-    if (isPlayoffs !== undefined) {
-      query = query.eq('playoffs', isPlayoffs);
-    }
-  }
+  const [actualGames, { availableYears, availableWeeks }] = await Promise.all([
+    getScoreboardGames(scoreboardQuery),
+    getSeasonWeekOptions(seasonYear),
+  ]);
 
-  const { data: games } = await query.order('year', { ascending: false }).order('week', { ascending: false });
+  const enhancedGames = enhanceGamesWithTeamProfiles(actualGames, contentfulTeams);
 
-  const actualGames = games || [];
-
-  // Get available years and weeks
-  const { data: availableData } = await supabase
-    .from('games')
-    .select('year, week, playoffs')
-    .order('year', { ascending: false })
-    .order('week', { ascending: false });
-
-  const availableYears = Array.from(new Set(availableData?.map((g: any) => g.year) || []));
-
-  // Separate regular season and playoff weeks, then combine them properly
-  const seasonGames = availableData?.filter((g: any) => g.year === seasonYear) || [];
-  const regularSeasonWeeks = Array.from(new Set(seasonGames.filter((g: any) => !g.playoffs).map((g: any) => g.week))).sort((a, b) => a - b);
-  const playoffWeeks = Array.from(new Set(seasonGames.filter((g: any) => g.playoffs).map((g: any) => g.week))).sort((a, b) => a - b);
-
-  // Create unique week identifiers to prevent duplicates
-  const availableWeeks = [
-    ...regularSeasonWeeks.map(week => ({ week, isPlayoff: false })),
-    ...playoffWeeks.map(week => ({ week, isPlayoff: true }))
-  ];
-
-  // Enhance games with Contentful data
-  const enhancedGames = actualGames.map((game: any) => {
-    const homeContentfulTeam = contentfulTeams.find(t => t.teamId === game.home_team_id);
-    const awayContentfulTeam = contentfulTeams.find(t => t.teamId === game.away_team_id);
-    
-    return {
-      ...game,
-      homeTeam: {
-        name: homeContentfulTeam?.teamName || 'Unknown Team',
-        shortName: homeContentfulTeam?.shortName || 'UNK',
-        logo: homeContentfulTeam?.logo?.url || '🏈',
-        isContentfulLogo: !!homeContentfulTeam?.logo,
-      },
-      awayTeam: {
-        name: awayContentfulTeam?.teamName || 'Unknown Team',
-        shortName: awayContentfulTeam?.shortName || 'UNK',
-        logo: awayContentfulTeam?.logo?.url || '🏈',
-        isContentfulLogo: !!awayContentfulTeam?.logo,
-      },
-    };
-  });
-
-  // Calculate stats
-  const completedGames = enhancedGames.filter(game => game.away_score !== null && game.home_score !== null);
-  const allScores = completedGames.flatMap(game => [game.home_score || 0, game.away_score || 0]);
-  const avgScore = allScores.length > 0 
-    ? (allScores.reduce((sum, score) => sum + score, 0) / allScores.length)
-    : 0;
-  const medianScore = allScores.length > 0 
-    ? (() => {
-        const sortedScores = [...allScores].sort((a, b) => a - b);
-        const mid = Math.floor(sortedScores.length / 2);
-        return sortedScores.length % 2 === 0 
-          ? (sortedScores[mid - 1] + sortedScores[mid]) / 2
-          : sortedScores[mid];
-      })()
-    : 0;
-  const highScore = allScores.length > 0 
-    ? Math.max(...allScores)
-    : 0;
-
-  // Calculate margins
-  const gamesWithMargins = completedGames.map(game => {
-    const margin = Math.abs((game.home_score || 0) - (game.away_score || 0));
-    const winner = (game.home_score || 0) > (game.away_score || 0) ? game.homeTeam : game.awayTeam;
-    const loser = (game.home_score || 0) > (game.away_score || 0) ? game.awayTeam : game.homeTeam;
-    return {
-      ...game,
-      margin,
-      winner,
-      loser
-    };
-  });
-
-  const narrowestMargin = gamesWithMargins.length > 0 
-    ? gamesWithMargins.reduce((min, game) => game.margin < min.margin ? game : min)
-    : null;
-
-  const biggestMargin = gamesWithMargins.length > 0 
-    ? gamesWithMargins.reduce((max, game) => game.margin > max.margin ? game : max)
-    : null;
+  const {
+    completedGames,
+    avgScore,
+    medianScore,
+    highScore,
+    narrowestMargin,
+    biggestMargin,
+  } = summarizeGames(enhancedGames);
 
   // Check if we have games for this year/week
   const hasGames = enhancedGames.length > 0;
@@ -240,25 +157,7 @@ export default async function ScoresPage(
           />
         ) : (
           <div className="px-4 py-2 font-semibold mt-2">
-            {seasonYear} Season • {(() => {
-              if (isPlayoffs) {
-                // Special handling for 2025
-                if (seasonYear === 2025) {
-                  const playoffRound = currentWeek === 15 ? 'Pod Round' : 
-                                      currentWeek === 16 ? 'Semifinals' : 
-                                      currentWeek === 17 ? 'Championship' : 
-                                      `Playoff Week ${currentWeek}`;
-                  return playoffRound;
-                } else {
-                  const playoffRound = currentWeek === 1 ? 'Quarterfinals' : 
-                                      currentWeek === 2 ? 'Semifinals' : 
-                                      currentWeek === 3 ? 'Championship' : 
-                                      `Playoff Week ${currentWeek}`;
-                  return playoffRound;
-                }
-              }
-              return `Week ${currentWeek}`;
-            })()}
+            {seasonYear} Season • {isPlayoffs ? getPlayoffRoundLabel(currentWeek) : `Week ${currentWeek}`}
           </div>
         )}
       </div>
@@ -291,7 +190,7 @@ export default async function ScoresPage(
         // Calculate wins and losses
         const wins = allTeamGames.filter(game => {
           const isHome = game.home_team_id === team1Id;
-          return isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
+          return isHome ? (game.home_score ?? 0) > (game.away_score ?? 0) : (game.away_score ?? 0) > (game.home_score ?? 0);
         }).length;
 
         const losses = allTeamGames.length - wins;
@@ -299,12 +198,12 @@ export default async function ScoresPage(
         // Calculate total points for and against
         const totalPointsFor = allTeamGames.reduce((sum, game) => {
           const isHome = game.home_team_id === team1Id;
-          return sum + (isHome ? game.home_score : game.away_score);
+          return sum + (isHome ? game.home_score ?? 0 : game.away_score ?? 0);
         }, 0);
 
         const totalPointsAgainst = allTeamGames.reduce((sum, game) => {
           const isHome = game.home_team_id === team1Id;
-          return sum + (isHome ? game.away_score : game.home_score);
+          return sum + (isHome ? game.away_score ?? 0 : game.home_score ?? 0);
         }, 0);
 
         const avgPointsFor = totalPointsFor / allTeamGames.length;
@@ -332,7 +231,7 @@ export default async function ScoresPage(
 
           sortedGames.forEach(game => {
             const isHome = game.home_team_id === team1Id;
-            const won = isHome ? game.home_score > game.away_score : game.away_score > game.home_score;
+            const won = isHome ? (game.home_score ?? 0) > (game.away_score ?? 0) : (game.away_score ?? 0) > (game.home_score ?? 0);
 
             if (won) {
               if (currentWinStreak === 0) {
@@ -480,7 +379,7 @@ export default async function ScoresPage(
         // Calculate wins for each team
         const team1Wins = h2hGames.filter(game => {
           const isTeam1Home = game.home_team_id === team1Id;
-          return isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+          return isTeam1Home ? (game.home_score ?? 0) > (game.away_score ?? 0) : (game.away_score ?? 0) > (game.home_score ?? 0);
         }).length;
 
         const team2Wins = h2hGames.length - team1Wins;
@@ -488,12 +387,12 @@ export default async function ScoresPage(
         // Calculate average scores
         const team1TotalScore = h2hGames.reduce((sum, game) => {
           const isTeam1Home = game.home_team_id === team1Id;
-          return sum + (isTeam1Home ? game.home_score : game.away_score);
+          return sum + (isTeam1Home ? game.home_score ?? 0 : game.away_score ?? 0);
         }, 0);
 
         const team2TotalScore = h2hGames.reduce((sum, game) => {
           const isTeam2Home = game.home_team_id === team2Id;
-          return sum + (isTeam2Home ? game.home_score : game.away_score);
+          return sum + (isTeam2Home ? game.home_score ?? 0 : game.away_score ?? 0);
         }, 0);
 
         const team1AvgScore = team1TotalScore / h2hGames.length;
@@ -507,7 +406,7 @@ export default async function ScoresPage(
 
           for (const game of games) {
             const isTeam1Home = game.home_team_id === team1Id;
-            const team1Won = isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+            const team1Won = isTeam1Home ? (game.home_score ?? 0) > (game.away_score ?? 0) : (game.away_score ?? 0) > (game.home_score ?? 0);
             const winner = team1Won ? team1Id : team2Id;
 
             if (winner === teamId) {
@@ -536,12 +435,12 @@ export default async function ScoresPage(
 
         const team1RegularWins = regularSeasonGames.filter(game => {
           const isTeam1Home = game.home_team_id === team1Id;
-          return isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+          return isTeam1Home ? (game.home_score ?? 0) > (game.away_score ?? 0) : (game.away_score ?? 0) > (game.home_score ?? 0);
         }).length;
 
         const team1PlayoffWins = playoffGames.filter(game => {
           const isTeam1Home = game.home_team_id === team1Id;
-          return isTeam1Home ? game.home_score > game.away_score : game.away_score > game.home_score;
+          return isTeam1Home ? (game.home_score ?? 0) > (game.away_score ?? 0) : (game.away_score ?? 0) > (game.home_score ?? 0);
         }).length;
 
         return (
@@ -646,7 +545,7 @@ export default async function ScoresPage(
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-foreground font-mono">{medianScore.toFixed(1)}</div>
             <div className="text-sm text-muted-foreground">Median Score</div>
-            {allScores.length > 0 && (
+            {completedGames.length > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
                 avg: {avgScore.toFixed(1)}
               </div>
@@ -685,34 +584,11 @@ export default async function ScoresPage(
               <CardHeader className="flex flex-col space-y-1.5 p-6 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">
-                    {(isHeadToHead || isAllGames) ? (
-                      `${game.year} Season • ${game.playoffs ? 
-                        (game.year === 2025 ? 
-                          (game.week === 15 ? 'Pod Round' :
-                           game.week === 16 ? 'Semifinals' :
-                           game.week === 17 ? 'Championship' :
-                           `Playoff Week ${game.week}`) :
-                          (game.week === 1 ? 'Quarterfinals' : 
-                           game.week === 2 ? 'Semifinals' : 
-                           game.week === 3 ? 'Championship' : 
-                           `Playoff Week ${game.week}`)
-                        ) : 
-                        `Week ${game.week}`
-                      }`
-                    ) : (
-                      isPlayoffs ? 
-                        (seasonYear === 2025 ?
-                          (currentWeek === 15 ? 'Pod Round' :
-                           currentWeek === 16 ? 'Semifinals' :
-                           currentWeek === 17 ? 'Championship' :
-                           `Playoff Week ${currentWeek}`) :
-                          (currentWeek === 1 ? 'Quarterfinals' : 
-                           currentWeek === 2 ? 'Semifinals' : 
-                           currentWeek === 3 ? 'Championship' : 
-                           `Playoff Week ${currentWeek}`)
-                        ) : 
-                        'Regular Season'
-                    )}
+                    {(isHeadToHead || isAllGames)
+                      ? `${game.year} Season • ${getGameWeekLabel(game)}`
+                      : isPlayoffs
+                      ? getPlayoffRoundLabel(currentWeek)
+                      : 'Regular Season'}
                   </div>
                   {!isHeadToHead && !isAllGames && (
                     <div className="text-sm text-muted-foreground">
@@ -727,7 +603,7 @@ export default async function ScoresPage(
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                     {/* Away Team (Left) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
-                      game.away_score > game.home_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
+                      (game.away_score ?? 0) > (game.home_score ?? 0) ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="w-8 h-8 flex items-center justify-center">
                         {game.awayTeam.isContentfulLogo ? (
@@ -748,8 +624,8 @@ export default async function ScoresPage(
                           <div className="text-sm text-muted-foreground">{game.awayTeam.shortName}</div>
                         </Link>
                       </div>
-                      <div className={`text-2xl font-bold ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {game.away_score.toFixed(1)}
+                      <div className={`text-2xl font-bold ${(game.away_score ?? 0) > (game.home_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {(game.away_score ?? 0).toFixed(1)}
                       </div>
                     </div>
                     
@@ -758,7 +634,7 @@ export default async function ScoresPage(
                     
                     {/* Home Team (Right) */}
                     <div className={`flex items-center space-x-3 p-3 rounded-lg flex-1 ${
-                      game.home_score > game.away_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
+                      (game.home_score ?? 0) > (game.away_score ?? 0) ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="w-8 h-8 flex items-center justify-center">
                         {game.homeTeam.isContentfulLogo ? (
@@ -779,8 +655,8 @@ export default async function ScoresPage(
                           <div className="text-sm text-muted-foreground">{game.homeTeam.shortName}</div>
                         </Link>
                       </div>
-                      <div className={`text-2xl font-bold ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {game.home_score.toFixed(1)}
+                      <div className={`text-2xl font-bold ${(game.home_score ?? 0) > (game.away_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {(game.home_score ?? 0).toFixed(1)}
                       </div>
                     </div>
                   </div>
@@ -788,7 +664,7 @@ export default async function ScoresPage(
                   // Regular weekly layout: teams stacked
                   <div className="space-y-4">
                     <div className={`flex items-center justify-between p-3 rounded-lg ${
-                      game.away_score > game.home_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
+                      (game.away_score ?? 0) > (game.home_score ?? 0) ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 flex items-center justify-center">
@@ -811,13 +687,13 @@ export default async function ScoresPage(
                           </Link>
                         </div>
                       </div>
-                      <div className={`league-score ${game.away_score > game.home_score ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {game.away_score.toFixed(1)}
+                      <div className={`league-score ${(game.away_score ?? 0) > (game.home_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {(game.away_score ?? 0).toFixed(1)}
                       </div>
                     </div>
                     <div className="text-center text-sm text-muted-foreground font-medium">VS</div>
                     <div className={`flex items-center justify-between p-3 rounded-lg ${
-                      game.home_score > game.away_score ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
+                      (game.home_score ?? 0) > (game.away_score ?? 0) ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted'
                     }`}>
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 flex items-center justify-center">
@@ -840,8 +716,8 @@ export default async function ScoresPage(
                           </Link>
                         </div>
                       </div>
-                      <div className={`league-score ${game.home_score > game.away_score ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {game.home_score.toFixed(1)}
+                      <div className={`league-score ${(game.home_score ?? 0) > (game.away_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {(game.home_score ?? 0).toFixed(1)}
                       </div>
                     </div>
                     <div className="text-center pt-2">
