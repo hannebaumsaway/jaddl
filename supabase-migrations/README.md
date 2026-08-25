@@ -36,3 +36,27 @@ Sets up the 2026 season: back to 2 divisions (East/West) after the 2019-2025 qua
 
 
 
+
+### 003_nfl_players.sql
+
+Creates the `nfl_players` table: a local cache of Sleeper's NFL player database,
+so player ids in matchups resolve to real players without a hand-maintained map.
+
+**When to run:** once, before the first `pnpm sync-players`.
+
+**What it does:**
+- Creates `nfl_players` keyed by Sleeper's `player_id` (text — team defenses use
+  the NFL abbreviation, e.g. `SEA`, not a number)
+- Indexes position, NFL team, and lower(full_name)
+
+**Usage:**
+1. Run the SQL in your Supabase SQL Editor
+2. `pnpm sync-players` to populate it (`--force` to bypass the once-daily guard)
+
+**Notes:**
+- Scope is fantasy-relevant positions only (QB/RB/WR/TE/K/DEF), but includes
+  retired and inactive players — historical articles need players who are no
+  longer active, so filtering on `active` would break them.
+- Rows are upserted and never deleted, for the same reason.
+- Sleeper asks that `/v1/players/nfl` be called at most once per day. That is
+  the reason this table exists; `sync-players` enforces a 20-hour minimum.
