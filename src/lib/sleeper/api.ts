@@ -4,7 +4,31 @@
  */
 
 const SLEEPER_BASE_URL = 'https://api.sleeper.app/v1';
-const LEAGUE_ID = '1389689970226126848';
+
+/**
+ * The current season's Sleeper league id.
+ *
+ * Sleeper issues a new league every year and chains them through
+ * `previous_league_id`, so this changes annually. It used to be a hardcoded
+ * constant here while SLEEPER_LEAGUE_ID also existed in the environment — two
+ * sources of truth, one of them ignored. They happened to agree, so nothing
+ * broke; the failure would have arrived next season, when updating the env var
+ * left this module still querying 2026.
+ *
+ * Read at call time rather than module load so an unset variable fails on the
+ * request that needs it, not at import — this module is reached from route
+ * handlers that would otherwise take the whole surface down.
+ */
+function getLeagueId(): string {
+  const id = process.env.SLEEPER_LEAGUE_ID;
+  if (!id) {
+    throw new Error(
+      'SLEEPER_LEAGUE_ID is not set. It holds the current season\'s Sleeper ' +
+      'league id, which changes every year. See env.example.'
+    );
+  }
+  return id;
+}
 
 export interface SleeperMatchup {
   starters: string[];
@@ -41,7 +65,7 @@ export interface SleeperUser {
  */
 export async function getLeagueInfo(): Promise<SleeperLeague | null> {
   try {
-    const response = await fetch(`${SLEEPER_BASE_URL}/league/${LEAGUE_ID}`);
+    const response = await fetch(`${SLEEPER_BASE_URL}/league/${getLeagueId()}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -57,7 +81,7 @@ export async function getLeagueInfo(): Promise<SleeperLeague | null> {
  */
 export async function getLeagueUsers(): Promise<SleeperUser[]> {
   try {
-    const response = await fetch(`${SLEEPER_BASE_URL}/league/${LEAGUE_ID}/users`);
+    const response = await fetch(`${SLEEPER_BASE_URL}/league/${getLeagueId()}/users`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -73,7 +97,7 @@ export async function getLeagueUsers(): Promise<SleeperUser[]> {
  */
 export async function getMatchups(week: number): Promise<SleeperMatchup[]> {
   try {
-    const response = await fetch(`${SLEEPER_BASE_URL}/league/${LEAGUE_ID}/matchups/${week}`);
+    const response = await fetch(`${SLEEPER_BASE_URL}/league/${getLeagueId()}/matchups/${week}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

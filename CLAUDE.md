@@ -47,7 +47,7 @@ All queries live in `src/lib/`; pages are server components that call these and 
 - `src/lib/supabase/scores.ts` — `getMostRecentWeek()`, `getSeasonWeekOptions(year)` and `getScoreboardGames(query)`. The scores page used to build its own `supabase.from('games')` query inline; it now goes through here like every other page. `getMostRecentWeek` orders by (year, playoffs, week) because playoff `week` is a round — a plain week sort ranks the championship below regular-season week 14.
 - `src/lib/utils/scores.ts` — pure derivations: `enhanceGamesWithTeamProfiles` (Contentful display data onto game rows) and `summarizeGames` (avg/median/high score, narrowest and biggest margin). No I/O, so any surface can reuse them.
 - `src/lib/contentful/api.ts` — article/team/trophy fetching plus the "Processed*" mappers.
-- `src/lib/sleeper/` — Sleeper API client (`api.ts`), roster-ID→team-ID map (`mapping.ts`), and `import-service.ts` which fetches a week's matchups, inserts games, and awards the weekly high-score trophy.
+- `src/lib/sleeper/` — Sleeper API client (`api.ts`), roster-ID→team-ID map (`mapping.ts`), `players.ts` (the `nfl_players` cache), and `import-service.ts` which fetches a week's matchups, inserts games, and awards the weekly high-score trophy. The league id comes from `SLEEPER_LEAGUE_ID` and **changes every season** — Sleeper issues a new league each year, chained through `previous_league_id`, which is how briefs reach past seasons.
 
 ### Schema naming gotchas
 
