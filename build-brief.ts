@@ -92,6 +92,22 @@ function render(b: GameBrief): string {
     L.push('  attached only when both scores match a Sleeper matchup exactly.');
   }
 
+  if (b.owners.winner || b.owners.loser) {
+    rule('OWNERS');
+    L.push(`  ${b.result.winner.name}: ${b.owners.winner ?? '?'}   ${b.result.loser.name}: ${b.owners.loser ?? '?'}`);
+  }
+
+  rule('BEYOND THIS WEEK');
+  const t = (list: { year: number; groupName: string }[]) =>
+    list.length ? list.map(x => `${x.year} ${x.groupName}`).join(', ') : 'none';
+  L.push(`  ${b.result.winner.name} group titles: ${t(b.history.winnerGroupTitles)}`);
+  L.push(`  ${b.result.loser.name} group titles: ${t(b.history.loserGroupTitles)}`);
+  L.push(`  championships — ${b.result.winner.name}: ${b.history.winnerChampionships.join(', ') || 'none'}` +
+         `   ${b.result.loser.name}: ${b.history.loserChampionships.join(', ') || 'none'}`);
+  L.push(`  winning score ranks ${b.history.winnerScoreRankInSeason} in ${b.meta.year}` +
+         (b.history.winnerScoreRankAllTime ? `, ${b.history.winnerScoreRankAllTime} all-time` : ''));
+  if (b.clinch) L.push(`  CLINCH: ${b.clinch.groupName}, title #${b.clinch.titleNumber}`);
+
   rule(`ANGLES (${b.angles.length})`);
   if (b.angles.length === 0) L.push('  none computed');
   for (const a of b.angles) L.push(`  [${a.kind}] ${a.text}`);

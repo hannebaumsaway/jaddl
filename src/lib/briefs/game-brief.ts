@@ -16,6 +16,15 @@
 import { supabase } from '../supabase/client';
 import { getPlayers, type NflPlayer } from '../sleeper/players';
 import { getPlayoffRoundLabel, getSeasonConfig, countsTowardRecord, type SeasonConfig } from '../supabase/api';
+import {
+  loadLeagueHistory,
+  computeGroupTitles,
+  computeChampionships,
+  computeClinch,
+  scoreContext,
+  type ClinchResult,
+  type GroupTitle,
+} from './history';
 
 /* ------------------------------------------------------------------ types */
 
@@ -100,6 +109,20 @@ export interface GameBrief {
     marginRankInWeek: number;
   };
   lineups: { winner: BriefLineup; loser: BriefLineup } | null;
+  /** Sleeper display names, when a lineup matched. Articles name owners. */
+  owners: { winner: string | null; loser: string | null };
+  history: {
+    winnerGroupTitles: GroupTitle[];
+    loserGroupTitles: GroupTitle[];
+    winnerChampionships: number[];
+    loserChampionships: number[];
+    /** Where the winning score sits in the season, and all-time if notable. */
+    winnerScoreRankInSeason: number;
+    winnerScoreRankAllTime: number | null;
+    loserScoreRankInSeason: number;
+  };
+  /** Set when this result mathematically secured a division/quad title. */
+  clinch: ClinchResult | null;
   angles: BriefAngle[];
 }
 
@@ -372,6 +395,23 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
   /* ---------------------------------------------------- sleeper lineups */
   let lineups: GameBrief['lineups'] = null;
   let sleeperScores: { winner: number; loser: number } | null = null;
+  let owners: { winner: string | null; loser: string | null } = { winner: null, loser: null };
+
+  // Owner first names live in team_bios ("Ryan", "Ian"). Sleeper only exposes
+  // usernames ("badnewsbensons"), which is not how the articles refer to people.
+  try {
+    const { data: bios } = await (supabase.from('team_bios') as any)
+      .select('team_id, owner')
+      .in('team_id', [winnerId, loserId]);
+    const byTeam = new Map<number, string>(
+      ((bios || []) as { team_id: number; owner: string | null }[])
+        .filter(b => b.owner)
+        .map(b => [b.team_id, b.owner as string])
+    );
+    owners = { winner: byTeam.get(winnerId) ?? null, loser: byTeam.get(loserId) ?? null };
+  } catch {
+    // Owner names are a nicety; never fail the brief for them.
+  }
   const leagueId = params.sleeperLeagueId;
   if (leagueId && !isPlayoff) {
     try {
@@ -418,6 +458,27 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
           // Sleeper carries two decimals where Supabase rounds to one; the
           // finer figure is what actually got published in past articles.
           sleeperScores = { winner: wM[0].points, loser: lM[0].points };
+
+          // Articles refer to owners by name ("Ian", "Lannie"), which lives in
+          // Sleeper's users endpoint rather than in the league database.
+          try {
+            const [rosters, users] = await Promise.all([
+              fetch(`${SLEEPER}/league/${seasonLeagueId}/rosters`).then(r => r.json()),
+              fetch(`${SLEEPER}/league/${seasonLeagueId}/users`).then(r => r.json()),
+            ]);
+            const userById = new Map<string, any>((users as any[]).map(u => [u.user_id, u]));
+            const ownerFor = (rosterId: number): string | null => {
+              const roster = (rosters as any[]).find(r => r.roster_id === rosterId);
+              const u = roster ? userById.get(roster.owner_id) : null;
+              return u?.display_name ?? null;
+            };
+            owners = {
+              winner: owners.winner ?? ownerFor(wM[0].roster_id),
+              loser: owners.loser ?? ownerFor(lM[0].roster_id),
+            };
+          } catch {
+            // Owner names are a nicety; never fail the brief for them.
+          }
         }
       }
     } catch {
@@ -426,11 +487,30 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
     }
   }
 
+  /* -------------------------------------------------- cross-season context */
+  const history = await loadLeagueHistory();
+  const groupTitles = computeGroupTitles(history);
+  const championships = computeChampionships(history);
+  const clinch = computeClinch(history, year, week, [winnerId, loserId], groupTitles);
+  const winnerScoreCtx = scoreContext(history, year, winnerScore);
+  const loserScoreCtx = scoreContext(history, year, loserScore);
+
+  const historyBlock = {
+    winnerGroupTitles: groupTitles.get(winnerId) ?? [],
+    loserGroupTitles: groupTitles.get(loserId) ?? [],
+    winnerChampionships: championships.get(winnerId) ?? [],
+    loserChampionships: championships.get(loserId) ?? [],
+    winnerScoreRankInSeason: winnerScoreCtx.rankInSeason,
+    winnerScoreRankAllTime: winnerScoreCtx.rankAllTime,
+    loserScoreRankInSeason: loserScoreCtx.rankInSeason,
+  };
+
   /* ------------------------------------------------------------- angles */
   const angles = deriveAngles({
     winner, loser, margin, isTie,
     beforeWinnerWins: bw, beforeLoserWins: bl,
     rivalry, weekScores, weekMargins, lineups,
+    clinch, history: historyBlock, year, teamNameById: id => teams.get(id)?.team_name ?? `Team ${id}`,
   });
 
   return {
@@ -464,6 +544,9 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
       marginRankInWeek: weekMargins.findIndex(m => Math.abs(m - margin) < 0.005) + 1,
     },
     lineups,
+    owners,
+    history: historyBlock,
+    clinch,
     angles,
   };
 }
@@ -554,6 +637,10 @@ interface AngleInput {
   weekScores: number[];
   weekMargins: number[];
   lineups: GameBrief['lineups'];
+  clinch: ClinchResult | null;
+  history: GameBrief['history'];
+  year: number;
+  teamNameById: (id: number) => string;
 }
 
 /**
@@ -564,6 +651,19 @@ interface AngleInput {
  * facts matter is most of what makes sportswriting good, which is why this is
  * computed rather than left to the generator.
  */
+
+/** 1 -> "first", 7 -> "seventh"; falls back to "12th" past twenty. */
+function ordinal(n: number): string {
+  const words = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh',
+                 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth',
+                 'fourteenth', 'fifteenth', 'sixteenth', 'seventeenth', 'eighteenth',
+                 'nineteenth', 'twentieth'];
+  if (n >= 1 && n < words.length) return words[n];
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function deriveAngles(i: AngleInput): BriefAngle[] {
   const a: BriefAngle[] = [];
   const { winner, loser, margin, beforeWinnerWins: bw, beforeLoserWins: bl } = i;
@@ -600,14 +700,19 @@ function deriveAngles(i: AngleInput): BriefAngle[] {
     });
   }
 
-  if (i.weekScores.length && Math.abs(winner.score - i.weekScores[0]) < 0.005) {
+  // With a single game — a playoff final — "highest score of the week" and
+  // "largest margin" are trivially true of the only game played, and read as
+  // padding. Season and all-time context below still applies.
+  const weekIsMeaningful = i.weekMargins.length > 1;
+
+  if (weekIsMeaningful && i.weekScores.length && Math.abs(winner.score - i.weekScores[0]) < 0.005) {
     a.push({ kind: 'week-high-score', text: `${winner.score} was the highest score of the week.` });
   }
 
-  if (i.weekMargins.length && Math.abs(margin - i.weekMargins[0]) < 0.005) {
+  if (weekIsMeaningful && i.weekMargins.length && Math.abs(margin - i.weekMargins[0]) < 0.005) {
     a.push({ kind: 'week-biggest-margin', text: `The ${margin}-point margin was the week's largest.` });
   }
-  if (i.weekMargins.length > 1 && Math.abs(margin - i.weekMargins[i.weekMargins.length - 1]) < 0.005) {
+  if (weekIsMeaningful && Math.abs(margin - i.weekMargins[i.weekMargins.length - 1]) < 0.005) {
     a.push({ kind: 'week-narrowest-margin', text: `The ${margin}-point margin was the week's narrowest.` });
   }
 
@@ -627,6 +732,68 @@ function deriveAngles(i: AngleInput): BriefAngle[] {
   const ls = loser.streakAfter;
   if (/^L([3-9]|\d{2})$/.test(ls)) {
     a.push({ kind: 'losing-streak', text: `${loser.name} has now lost ${ls.slice(1)} straight.` });
+  }
+
+  /* ---- context from beyond this week: the part a reader cannot eyeball ---- */
+
+  if (i.clinch) {
+    const who = i.teamNameById(i.clinch.teamId);
+    a.push({
+      kind: 'clinched-group',
+      text: `This result clinched the ${i.clinch.groupName} for ${who} — their ${ordinal(i.clinch.titleNumber)} group title.`,
+    });
+  }
+
+  const wTitles = i.history.winnerGroupTitles;
+  const prior = wTitles.filter(t => t.year < i.year);
+  if (!i.clinch && prior.length >= 3) {
+    a.push({
+      kind: 'franchise-group-titles',
+      text: `${winner.name} has won ${prior.length} group titles (${prior.map(t => t.year).join(', ')}).`,
+    });
+  }
+  for (const [side, champs] of [[winner, i.history.winnerChampionships], [loser, i.history.loserChampionships]] as const) {
+    const before = champs.filter(y => y < i.year);
+    if (before.length >= 2) {
+      a.push({
+        kind: 'franchise-championships',
+        text: `${side.name} has ${before.length} championships (${before.join(', ')}).`,
+      });
+    }
+  }
+
+  // A big score is only interesting relative to the season, not the week.
+  if (i.history.winnerScoreRankInSeason === 1) {
+    a.push({ kind: 'season-high-score', text: `${winner.score} is the highest single-team score of the ${i.year} season.` });
+  } else if (i.history.winnerScoreRankInSeason <= 3) {
+    a.push({
+      kind: 'season-top-score',
+      text: `${winner.score} is the ${ordinal(i.history.winnerScoreRankInSeason)}-highest score of the ${i.year} season.`,
+    });
+  }
+  if (i.history.winnerScoreRankAllTime) {
+    a.push({
+      kind: 'all-time-score',
+      text: `${winner.score} is the ${ordinal(i.history.winnerScoreRankAllTime)}-highest single-team score in league history.`,
+    });
+  }
+  if (i.history.loserScoreRankInSeason <= 5) {
+    a.push({
+      kind: 'losing-score-was-elite',
+      text: `${loser.name} lost with the ${ordinal(i.history.loserScoreRankInSeason)}-highest score of the season.`,
+    });
+  }
+
+  // "Battle of the 30-bombs" — the pattern across both lineups, not one player.
+  if (i.lineups) {
+    const bombs = [...i.lineups.winner.starters, ...i.lineups.loser.starters].filter(p => p.points >= 30);
+    if (bombs.length >= 3) {
+      a.push({
+        kind: 'multi-thirty',
+        text: `${bombs.length} starters cleared 30 points in this game: ` +
+              bombs.map(p => `${p.name} ${p.points}`).join(', ') + '.',
+      });
+    }
   }
 
   if (i.lineups) {
