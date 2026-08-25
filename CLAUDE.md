@@ -66,7 +66,7 @@ Because `database.types.ts` is only partially accurate, `api.ts` casts queries t
 
 ### Season format config
 
-`getSeasonConfig(year)` in `api.ts` is the single source of truth for per-season format — playoff field size, whether pods are used, how wildcards are ranked, and regular-season length. **Add new season rules there rather than branching on the year at the call site.**
+`getSeasonConfig(year)` in `api.ts` is the single source of truth for per-season format — playoff field size, whether pods are used, how wildcards are ranked, regular-season length, and `recordExcludesWeeks` (regular-season weeks whose games score points but do not count toward W-L-T). **Add new season rules there rather than branching on the year at the call site.** 2025's Week 14 play-in was previously an inline `year === 2025` check inside `calculateStandings`; because the streak walk did not repeat that check, every 2025 streak was wrong — two of them pointed the wrong way. That is what the inline branching costs.
 
 - **2025** was a one-off: an 8-team field, four quad winners at seeds 1–4, wildcards ranked purely on points, and Week 14 as a play-in (points counted, W-L did not), pushing playoffs to NFL week 15.
 - **2026 onward**: 6-team field, group winners take the top seeds with byes, four wildcards by record.
@@ -87,7 +87,7 @@ Override deliberately and only for planning: `calculatePlayoffSeeds(year, { allo
 
 Every season since 2007 records playoff games with `playoffs = true` and `week` as the **round** (1 = quarterfinal, 2 = semifinal, 3 = championship) — not the NFL week. A season therefore has regular-season weeks 1–14 *and* playoff weeks 1–3. `importWeekScores` only writes regular-season games and refuses weeks past `regularSeasonWeeks`; playoff results are entered separately.
 
-Consequence to watch: `calculateStandings` sorts all of a season's games by `week` ascending when computing streaks, which interleaves playoff rounds with early regular-season weeks. Streak values are unreliable for seasons with playoff games.
+This used to corrupt streaks: `calculateStandings` sorted *all* of a season's games by `week` when walking back for the current streak, so playoff rounds landed among early regular-season weeks. Both that and the Week-14 problem are fixed — everything that derives a record now filters through `countsTowardRecord(game, config)`, which drops playoff games and any week in `config.recordExcludesWeeks`. **Any new code computing a record, streak or tiebreak must use that predicate**, or the columns will silently disagree again.
 
 ### Routing and rendering
 
