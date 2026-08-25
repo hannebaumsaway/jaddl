@@ -447,7 +447,7 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
           const [x, y] = pairs[0];
           const wM = [Math.abs(x.points - winnerScore) <= TOL ? x : y];
           const lM = [wM[0] === x ? y : x];
-          const seasonAverages = await computeSeasonAverages(seasonLeagueId, week);
+          const seasonAverages = await computeSeasonAverages(seasonLeagueId, week, week);
           const ids = [...new Set([...wM[0].starters, ...lM[0].starters,
                                    ...wM[0].players, ...lM[0].players])];
           const players = await getPlayers(ids);
@@ -588,16 +588,26 @@ function toLineup(
 }
 
 /**
- * Mean points per week for each player, across the season up to `throughWeek`.
- * Weeks where a player scored nothing and was not rostered would drag the mean
- * down, so only weeks with a recorded score count.
+ * Baseline weekly score for each player, used to judge whether a performance
+ * was unusual.
+ *
+ * Two exclusions, both of which materially change the number:
+ *
+ * 1. The week being measured is left out. Otherwise a huge game inflates its
+ *    own baseline and understates itself — Jonathan Taylor's 39.4 in 2025 week
+ *    8 reads 1.43x against a baseline containing it, and 1.52x without.
+ * 2. Weeks where a player was benched and scored exactly zero are dropped.
+ *    Those are byes, inactives and injuries, not performances; they were 14.7%
+ *    of all samples in the first half of 2025 and dragged every average down.
+ *    A zero from a player who was STARTED is kept — that is a real result.
  */
 async function computeSeasonAverages(
   leagueId: string,
-  throughWeek: number
+  throughWeek: number,
+  excludeWeek: number
 ): Promise<Map<string, number>> {
   const totals = new Map<string, { sum: number; n: number }>();
-  const weeks = Array.from({ length: throughWeek }, (_, i) => i + 1);
+  const weeks = Array.from({ length: throughWeek }, (_, i) => i + 1).filter(w => w !== excludeWeek);
 
   const results = await Promise.all(
     weeks.map(w =>
@@ -609,8 +619,10 @@ async function computeSeasonAverages(
 
   for (const week of results as SleeperMatchupRaw[][]) {
     for (const m of week || []) {
+      const started = new Set(m.starters || []);
       for (const [pid, pts] of Object.entries(m.players_points || {})) {
         if (typeof pts !== 'number') continue;
+        if (pts === 0 && !started.has(pid)) continue; // bye / inactive
         const cur = totals.get(pid) ?? { sum: 0, n: 0 };
         cur.sum += pts;
         cur.n += 1;
