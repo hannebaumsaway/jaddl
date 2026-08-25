@@ -284,8 +284,19 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
       (g.home_team_id === teamId || g.away_team_id === teamId)
   );
   if (!game) {
+    // The most likely cause in-season is simply that the week has not been
+    // imported yet — the brief reads Supabase, not Sleeper, for the result.
+    const weeksPresent = [...new Set(
+      seasonGames.filter(g => !!g.playoffs === isPlayoff).map(g => g.week)
+    )].sort((a, b) => a - b);
+    const hint = weeksPresent.length
+      ? `${year} has ${isPlayoff ? 'rounds' : 'weeks'} ${weeksPresent.join(', ')} recorded.` +
+        (!isPlayoff && week > Math.max(...weeksPresent)
+          ? ` Week ${week} looks un-imported — run the score import first.`
+          : '')
+      : `No ${year} games are recorded at all — import the season first.`;
     throw new Error(
-      `No ${isPlayoff ? 'playoff' : 'regular-season'} game found for team ${teamId}, ${year} week ${week}`
+      `No ${isPlayoff ? 'playoff' : 'regular-season'} game for team ${teamId} in ${year} week ${week}. ${hint}`
     );
   }
   if (game.home_score === null || game.away_score === null) {
