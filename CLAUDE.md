@@ -123,6 +123,22 @@ Credentials are `ADMIN_USERNAME`/`ADMIN_PASSWORD`, compared with a hash-then-`ti
 
 Changing the signing secret invalidates all existing sessions.
 
+### Database access and writes
+
+Reads use the anon key via `src/lib/supabase/client.ts`. **Writes must use
+`getAdminClient()` from `src/lib/supabase/admin.ts`**, which uses
+`SUPABASE_SERVICE_ROLE_KEY` and throws if reached from the browser.
+
+Row-level security is enabled on every table with public SELECT policies and no
+write policies (`supabase-migrations/004_row_level_security.sql`), so the anon
+key can read and nothing else. This matters because `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+is compiled into the client bundle every visitor downloads — before RLS, that
+key could write to `games` directly and bypass the admin auth entirely.
+
+Do not reintroduce the old `SUPABASE_SERVICE_ROLE_KEY || NEXT_PUBLIC_..._ANON_KEY`
+fallback that `games.ts` and the playoff-export route used to have. It made an
+insecure configuration look like a working one.
+
 ### Database migrations
 
 SQL lives in `supabase-migrations/` and is applied **manually in the Supabase SQL Editor** — there is no migration runner. Add a numbered file and document it in `supabase-migrations/README.md`.

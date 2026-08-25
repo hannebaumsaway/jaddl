@@ -2,13 +2,14 @@
  * Supabase integration for games table operations
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './client';
+import { getAdminClient } from './admin';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-// Use service role key for server-side operations, fallback to anon key
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+// This module previously built its own client preferring the service-role key
+// but silently falling back to the anon key. That fallback is what let writes
+// succeed with a key shipped to every browser. Reads now use the shared anon
+// client; writes go through getAdminClient() and fail loudly without a service
+// key rather than quietly downgrading.
 
 export interface Game {
   id?: number;
@@ -48,7 +49,9 @@ export async function insertGames(games: Game[]): Promise<{ success: boolean; er
 
     console.log('Inserting games (auto-generated IDs):', JSON.stringify(gamesToInsert, null, 2));
 
-    const { data, error } = await supabase
+    // Writes go through the service-role client: row-level security allows the
+    // public anon key to read but never to modify.
+    const { data, error } = await getAdminClient()
       .from('games')
       .insert(gamesToInsert)
       .select();
@@ -70,8 +73,7 @@ export async function insertGames(games: Game[]): Promise<{ success: boolean; er
  */
 export async function checkGamesExist(year: number, week: number): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .from('games')
+    const { data, error } = await (supabase.from('games') as any)
       .select('id')
       .eq('year', year)
       .eq('week', week)
@@ -99,8 +101,7 @@ export async function getHighestScoringTeam(year: number, week: number): Promise
 } | null> {
   try {
     // Get all games for the week
-    const { data: games, error: gamesError } = await supabase
-      .from('games')
+    const { data: games, error: gamesError } = await (supabase.from('games') as any)
       .select('away_team_id, home_team_id, away_score, home_score')
       .eq('year', year)
       .eq('week', week);
@@ -119,7 +120,7 @@ export async function getHighestScoringTeam(year: number, week: number): Promise
     let highestTeam = null;
     let isAway = false;
 
-    games.forEach(game => {
+    games.forEach((game: any) => {
       if (game.away_score && game.away_score > highestScore) {
         highestScore = game.away_score;
         highestTeam = game.away_team_id;
@@ -150,8 +151,9 @@ export async function awardTrophy(
 ): Promise<{ success: boolean; error?: string; isNew?: boolean }> {
   try {
     // Check if trophy already exists for this team/year (any week)
-    const { data: existing, error: checkError } = await supabase
-      .from('trophy_case')
+    // Cast: trophy_case is absent from the generated database.types.ts, which
+    // CLAUDE.md documents as only partially accurate.
+    const { data: existing, error: checkError } = await (supabase.from('trophy_case') as any)
       .select('team_id, trophy_id, year, amount')
       .eq('team_id', team_id)
       .eq('trophy_id', trophy_id)
@@ -165,7 +167,7 @@ export async function awardTrophy(
 
     if (existing) {
       // Increment existing trophy amount
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getAdminClient()
         .from('trophy_case')
         .update({ amount: existing.amount + 1 })
         .eq('team_id', team_id)
@@ -180,7 +182,7 @@ export async function awardTrophy(
       return { success: true, isNew: false };
     } else {
       // Create new trophy entry
-      const { error: insertError } = await supabase
+      const { error: insertError } = await getAdminClient()
         .from('trophy_case')
         .insert({
           team_id,
@@ -207,8 +209,7 @@ export async function awardTrophy(
  */
 export async function getTeamName(team_id: number): Promise<string | null> {
   try {
-    const { data, error } = await supabase
-      .from('teams')
+    const { data, error } = await (supabase.from('teams') as any)
       .select('team_name')
       .eq('team_id', team_id)
       .single();

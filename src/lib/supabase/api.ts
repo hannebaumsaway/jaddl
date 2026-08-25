@@ -1,4 +1,5 @@
 import { supabase, handleSupabaseError } from './client';
+import { getAdminClient } from './admin';
 import type { 
   Team, 
   Game, 
@@ -1023,7 +1024,8 @@ export async function savePlayoffSeeds(
     }
 
     // Delete existing seeds for this season
-    const { error: deleteError } = await supabase
+    // Service-role client: RLS permits the anon key to read, never to write.
+    const { error: deleteError } = await getAdminClient()
       .from('playoff_seeds')
       .delete()
       .eq('season_year', seasonYear);
@@ -1051,7 +1053,7 @@ export async function savePlayoffSeeds(
       pod: getPod(seed.seed),
     }));
 
-    const { data, error } = await supabase
+    const { data, error } = await getAdminClient()
       .from('playoff_seeds')
       .insert(seedsToInsert as any)
       .select();

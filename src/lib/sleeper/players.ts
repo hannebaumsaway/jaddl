@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '../supabase/client';
+import { getAdminClient } from '../supabase/admin';
 
 const SLEEPER_PLAYERS_URL = 'https://api.sleeper.app/v1/players/nfl';
 
@@ -137,7 +138,7 @@ export async function syncPlayers(
     // Cast: nfl_players is not in the generated database.types.ts, which the
     // repo treats as only partially accurate (see CLAUDE.md). Without this the
     // typed client narrows the row type to `never`.
-    const { error } = await (supabase.from('nfl_players') as any)
+    const { error } = await (getAdminClient().from('nfl_players') as any)
       .upsert(chunk.map(r => ({ ...r, synced_at: new Date().toISOString() })), {
         onConflict: 'player_id',
       });

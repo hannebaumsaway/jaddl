@@ -60,3 +60,27 @@ so player ids in matchups resolve to real players without a hand-maintained map.
 - Rows are upserted and never deleted, for the same reason.
 - Sleeper asks that `/v1/players/nfl` be called at most once per day. That is
   the reason this table exists; `sync-players` enforces a 20-hour minimum.
+
+### 004_row_level_security.sql
+
+Enables row-level security on every table and adds public read-only policies.
+
+**When to run:** only *after* `SUPABASE_SERVICE_ROLE_KEY` is set in `.env.local`
+and in Vercel (Production **and** Preview). Running it first breaks score
+import, playoff seeding and `pnpm sync-players` until the key exists.
+
+**What it does:**
+- `ENABLE ROW LEVEL SECURITY` on all 14 tables
+- One `FOR SELECT USING (true)` policy each — the site is public and reads with
+  the anon key
+- Deliberately **no** write policies; absent a policy, RLS denies the action
+
+**Why:** `NEXT_PUBLIC_SUPABASE_ANON_KEY` is compiled into the JavaScript every
+visitor downloads. With no RLS, anyone could extract it and write to `games`
+directly, bypassing the admin auth in `src/proxy.ts` entirely. Verified
+2026-08-25: an anon-key `UPDATE` on `games` returned no permission error.
+
+**After running:** writes go through `getAdminClient()` in
+`src/lib/supabase/admin.ts`, which uses the service-role key. The service role
+bypasses RLS by design, so no write policies are needed. That client throws if
+it is ever reached from the browser.
