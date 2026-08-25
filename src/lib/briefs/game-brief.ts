@@ -588,7 +588,16 @@ function deriveAngles(i: AngleInput): BriefAngle[] {
   } else if (bw === bl && after.w > after.l) {
     a.push({ kind: 'series-lead-taken', text: `The series was tied ${bw}-${bl}; ${winner.name} now leads ${after.w}-${after.l}.` });
   } else if (bw + bl >= 10) {
-    a.push({ kind: 'series-standing', text: `${winner.name} leads the all-time series ${after.w}-${after.l} after ${after.w + after.l} meetings.` });
+    // The winner of this game may still trail the all-time series; saying
+    // "leads" regardless produced "Lanniesters leads the all-time series 14-18".
+    const verb = after.w > after.l ? 'leads' : after.w < after.l ? 'trails' : 'is level in';
+    const figures = after.w > after.l ? `${after.w}-${after.l}` : `${after.l}-${after.w}`;
+    a.push({
+      kind: 'series-standing',
+      text: after.w === after.l
+        ? `The all-time series is level at ${after.w}-${after.l} after ${after.w + after.l} meetings.`
+        : `${winner.name} ${verb} the all-time series ${figures} after ${after.w + after.l} meetings.`,
+    });
   }
 
   if (i.weekScores.length && Math.abs(winner.score - i.weekScores[0]) < 0.005) {
