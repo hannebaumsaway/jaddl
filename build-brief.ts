@@ -4,6 +4,7 @@
  *   pnpm brief --year 2025 --week 8 --team 10
  *   pnpm brief --year 2025 --week 8 --team "Hauloll"
  *   pnpm brief --year 2025 --week 8 --team 10 --json
+ *   pnpm brief --year 2025 --week 8 --team 10 --prompt
  *
  * Team accepts a numeric team_id or a case-insensitive substring of the team
  * name. Add --playoff for a playoff round (week is the ROUND, 1-3).
@@ -15,6 +16,7 @@
 // Env is loaded by node's --env-file flag in the `brief` script, not dotenv:
 // ESM evaluates every import before any module body runs, and
 // src/lib/supabase/client.ts throws at import time when its keys are absent.
+import { readFileSync } from 'node:fs';
 import { buildGameBrief, type GameBrief } from './src/lib/briefs/game-brief';
 import { supabase } from './src/lib/supabase/client';
 
@@ -132,6 +134,26 @@ async function main() {
     isPlayoff: flag('playoff'),
     sleeperLeagueId: process.env.SLEEPER_LEAGUE_ID,
   });
+
+  if (flag('prompt')) {
+    // Voice guidance lives in one file, not in the brief: the brief is
+    // evidence, and baking instructions into it would fix one tone forever.
+    // This flag is the join point, producing something paste-ready.
+    let voice: string;
+    try {
+      voice = readFileSync('ARTICLE_VOICE.md', 'utf8').trim();
+    } catch {
+      console.error('ARTICLE_VOICE.md not found — run from the repo root.');
+      process.exit(1);
+    }
+    console.log(voice);
+    console.log('\n\n---\n');
+    console.log('Write the recap for the game below, following the voice guide above.\n');
+    console.log('```');
+    console.log(render(brief));
+    console.log('```');
+    return;
+  }
 
   console.log(flag('json') ? JSON.stringify(brief, null, 2) : render(brief));
 }
