@@ -13,6 +13,11 @@ pnpm dev          # dev server on :3000
 pnpm build        # production build
 pnpm lint         # eslint . (flat config; `next lint` was removed in Next 16)
 pnpm type-check   # tsc --noEmit
+
+pnpm sync-players                                   # refresh the Sleeper player cache
+pnpm brief --year 2025 --week 8 --team "Hauloll"    # game brief for article writing
+pnpm brief ... --json                               # same, machine-readable
+pnpm brief ... --prompt                             # voice guide + brief, paste-ready
 ```
 
 There is no test framework. "Tests" are standalone Node scripts at the repo root that load `.env.local` via `dotenv` and talk to Supabase/Contentful directly:
@@ -142,6 +147,56 @@ insecure configuration look like a working one.
 ### Database migrations
 
 SQL lives in `supabase-migrations/` and is applied **manually in the Supabase SQL Editor** — there is no migration runner. Add a numbered file and document it in `supabase-migrations/README.md`.
+
+## Article pipeline
+
+Weekly recaps are written from a generated **brief**, not from raw data. The
+split is deliberate and load-bearing: **facts are gathered by code, prose is
+written separately.** A writer who has to look up a player id or judge whether
+a result was unusual will invent things; one handed a brief will not.
+
+### The pieces
+
+- `nfl_players` (migration 003) caches Sleeper's player database;
+  `pnpm sync-players` refreshes it, at most every 20 hours per Sleeper's
+  guidance. This replaced a manual step where Sleeper player ids were mapped to
+  real players by hand each week. Includes retired players — historical
+  matchups must stay resolvable — and rows are upserted, never deleted.
+- `src/lib/briefs/game-brief.ts` — `buildGameBrief()`. Records, streaks,
+  all-time series, named rivalry and its trophy, week context, full lineups with
+  each starter scored against their own baseline, owner names from `team_bios`,
+  and computed candidate **angles**.
+- `src/lib/briefs/history.ts` — cross-season context: division/quad titles
+  (recomputed, nothing stores a winner flag), championships, clinch detection,
+  score ranks.
+- `src/lib/briefs/cohorts.ts` — precedent: "how many teams have ever been in
+  this situation and what happened to them". This is the signature of the
+  column's voice.
+- `ARTICLE_VOICE.md` — how to write. Kept out of the brief on purpose: the brief
+  is evidence, and baking instructions into it would fix one tone for every
+  consumer.
+
+### Decisions that are still standing
+
+- **Do not build automatic generation yet.** Ryan decided (2026-08-25) to use
+  the brief manually for several weeks first, to learn what it is missing before
+  anything is built on its shape. Brief → draft → Contentful stays unbuilt until
+  he says the brief is right.
+- **`ARTICLE_VOICE.md` is drafted from 2008–2021 only.** The 2025 articles were
+  AI-generated; drafting from them produced an imitation of an imitation, and
+  the two voices have almost nothing in common. Its "Do not" section lists the
+  AI tics explicitly because they are what a model reaches for by default.
+- **Voice direction is Ryan's.** He is a designer by trade and sets direction;
+  document what he does rather than proposing alternatives.
+
+### Two real limits
+
+- A brief reads the **result** from Supabase, so a week must be imported before
+  a brief works. In-season the order is import scores → build brief → write.
+- The brief has **no real-world NFL context**. It knows a player scored 42.75,
+  never how. That texture carries a lot of the published writing, and an
+  invented NFL narrative is checkable by every reader — so it is left out rather
+  than guessed.
 
 ## Conventions
 
