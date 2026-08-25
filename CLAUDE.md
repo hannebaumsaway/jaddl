@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-JADDL is a fantasy football league site: Next.js 14 App Router + TypeScript, with **Supabase** for league data (games, teams, standings, trophies) and **Contentful** for editorial content (articles, team profiles, logos). Deployed on Vercel. Package manager is **pnpm**.
+JADDL is a fantasy football league site: Next.js 16 App Router (Turbopack) + React 19 + TypeScript, with **Supabase** for league data (games, teams, standings, trophies) and **Contentful** for editorial content (articles, team profiles, logos). Deployed on Vercel. Package manager is **pnpm**.
 
 ## Commands
 
 ```bash
 pnpm dev          # dev server on :3000
 pnpm build        # production build
-pnpm lint         # next lint
+pnpm lint         # eslint . (flat config; `next lint` was removed in Next 16)
 pnpm type-check   # tsc --noEmit
 ```
 
@@ -94,16 +94,16 @@ Consequence to watch: `calculateStandings` sorts all of a season's games by `wee
 - `src/app/(pages)/` — public site (home, news, scores, standings, teams, history, survivor). Mostly server components; the home page is `force-dynamic`, and `teams/page.tsx` plus the news client components are `'use client'`.
 - `src/app/(admin)/admin/` — score import and playoff export dashboards, all client components.
 - `src/app/api/` — admin auth (`login`/`logout`/`verify`), `admin/import-scores`, `export-playoff-data`, `revalidate`, and the diagnostic `analyze-db` / `test-supabase` routes.
-- `src/middleware.ts` gates the admin surface (see below).
+- `src/proxy.ts` gates the admin surface (see below). Next 16 renamed the `middleware` convention to `proxy`; it runs on the **Node** runtime, which is not configurable.
 - `POST /api/revalidate?tag=…|path=…` handles ISR invalidation (Contentful webhook target). Authenticated with `REVALIDATE_SECRET` via the `x-revalidate-secret` header (preferred — query strings land in access logs) or a `secret` query param for existing webhook configs. Required on every call, compared with `safeEqual`, and fails closed when `REVALIDATE_SECRET` is unset.
 
 ### Admin auth
 
 Sessions are **stateless and HMAC-signed** (`src/lib/auth/session.ts`). The cookie holds `base64url(payload).base64url(HMAC-SHA256)`; `verifySessionToken` recomputes the signature and checks `exp`, so only a token this server issued is accepted. Signed with `ADMIN_SESSION_SECRET`, falling back to `NEXTAUTH_SECRET` — if neither is set, session creation throws and verification fails closed, so a misconfigured deploy locks admin out rather than opening it up.
 
-Written with Web Crypto (not `node:crypto`) specifically so the same module runs in Edge middleware and Node route handlers. The `node:crypto` helper `safeEqual` lives separately in `src/lib/auth/secrets.ts` for that reason — importing it into middleware would break the Edge build.
+Written with Web Crypto (not `node:crypto`). This originally existed so the same module could run in Edge middleware and Node route handlers; since the Next 16 `proxy` convention is Node-only, that constraint no longer binds. The code is kept as-is — Web Crypto is global in Node 20+ and the auth flow is verified working — but new auth code is no longer forced away from `node:crypto`. `safeEqual` still lives separately in `src/lib/auth/secrets.ts`.
 
-`src/middleware.ts` matches `/admin/*`, `/api/admin/*`, `/api/analyze-db/*`, and `/api/test-supabase/*` — browsers get redirected to `/admin/login`, API callers get a 401. `/admin/login`, `/api/admin/login`, and `/api/admin/logout` are exempt. `import-scores` also verifies the session itself, since it writes to the database and shouldn't depend on the matcher alone.
+`src/proxy.ts` matches `/admin/*`, `/api/admin/*`, `/api/analyze-db/*`, and `/api/test-supabase/*` — browsers get redirected to `/admin/login`, API callers get a 401. `/admin/login`, `/api/admin/login`, and `/api/admin/logout` are exempt. `import-scores` also verifies the session itself, since it writes to the database and shouldn't depend on the matcher alone.
 
 Credentials are `ADMIN_USERNAME`/`ADMIN_PASSWORD`, compared with a hash-then-`timingSafeEqual`.
 

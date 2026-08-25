@@ -8,7 +8,7 @@ import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session';
  */
 const PUBLIC_PATHS = new Set(['/admin/login', '/api/admin/login', '/api/admin/logout']);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.has(pathname)) {
