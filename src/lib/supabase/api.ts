@@ -333,6 +333,14 @@ export interface SeasonConfig {
   usesPods: boolean;
   wildcardRule: 'points' | 'record';
   regularSeasonWeeks: number;
+  /**
+   * Regular-season weeks whose games do NOT count toward W-L-T. Points still
+   * count. 2025's Week 14 was a play-in scored on points alone, so it belongs
+   * here rather than as an inline `year === 2025` check at the call site —
+   * anything deriving a record (W-L, streak, tiebreaks) must honour the same
+   * rule or the columns silently disagree with each other.
+   */
+  recordExcludesWeeks: number[];
 }
 
 export function getSeasonConfig(seasonYear: number): SeasonConfig {
@@ -341,9 +349,33 @@ export function getSeasonConfig(seasonYear: number): SeasonConfig {
   const regularSeasonWeeks = seasonYear >= 2021 ? 14 : 13;
 
   if (seasonYear === 2025) {
-    return { playoffTeams: 8, usesPods: true, wildcardRule: 'points', regularSeasonWeeks };
+    return {
+      playoffTeams: 8,
+      usesPods: true,
+      wildcardRule: 'points',
+      regularSeasonWeeks,
+      recordExcludesWeeks: [14],
+    };
   }
-  return { playoffTeams: 6, usesPods: false, wildcardRule: 'record', regularSeasonWeeks };
+  return {
+    playoffTeams: 6,
+    usesPods: false,
+    wildcardRule: 'record',
+    regularSeasonWeeks,
+    recordExcludesWeeks: [],
+  };
+}
+
+/**
+ * The single predicate for "does this game count toward a team's record?"
+ * Playoff games never do — they are stored with `week` holding the ROUND
+ * (1-3), so they also sort as if they were early-season games. Both the W-L
+ * tally and the streak walk must filter through this.
+ */
+export function countsTowardRecord(game: Game, config: SeasonConfig): boolean {
+  if (game.playoffs) return false;
+  if (config.recordExcludesWeeks.includes(game.week)) return false;
+  return true;
 }
 
 /** Win pct within a team's division/quad, whichever the season uses. */
@@ -476,8 +508,10 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
       quads = await getQuads();
     }
 
-    // Special handling for 2025: Week 14 doesn't count toward division standings
+    // Per-season record rules live in getSeasonConfig, not inline here.
+    const seasonConfig = getSeasonConfig(seasonYear);
     const is2025 = seasonYear === 2025;
+    // Division/quad standings stop at the last week that counts toward record.
     const divisionCutoffWeek = is2025 ? 13 : 14;
 
     const teamRecords: Map<number, TeamRecord> = new Map();
@@ -521,12 +555,11 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
           awayRecord.points_for += game.away_score!;
           awayRecord.points_against += game.home_score!;
 
-          // For 2025, Week 14 doesn't count toward W-L-T records at all (only points count)
-          // For other years, or if not Week 14, update W-L-T normally
-          const includeInRecord = !is2025 || game.week !== 14;
+          // Single source of truth — the streak walk below uses this same
+          // predicate, so W-L and streak cannot disagree.
           const isRegularSeason = !game.playoffs;
 
-          if (includeInRecord && isRegularSeason) {
+          if (countsTowardRecord(game, seasonConfig)) {
             if (game.home_score! > game.away_score!) {
               homeRecord.wins++;
               awayRecord.losses++;
@@ -585,14 +618,25 @@ export async function calculateStandings(seasonYear: number): Promise<Standings>
       record.win_percentage = totalGames > 0 ? (record.wins + record.ties * 0.5) / totalGames : 0;
       record.point_differential = record.points_for - record.points_against;
       
-      // Calculate current streak
+      // Calculate current streak.
+      //
+      // Must use the SAME predicate as the W-L tally above. Two ways this
+      // previously went wrong:
+      //   1. Playoff games were included. They store `week` as the ROUND (1-3),
+      //      so they sorted in among early regular-season weeks rather than at
+      //      the end. Latent in practice — the backward walk breaks before
+      //      reaching them — but it would surface for an undefeated season.
+      //   2. Weeks excluded from the record (2025's points-only Week 14 play-in)
+      //      still counted toward the streak, so every 2025 streak was off by
+      //      one and two of them pointed the wrong direction entirely.
       const teamGames = games
-        .filter(g => 
+        .filter(g =>
           (g.home_team_id === record.team_id || g.away_team_id === record.team_id) &&
-          g.home_score !== null && 
-          g.away_score !== null
+          g.home_score !== null &&
+          g.away_score !== null &&
+          countsTowardRecord(g, seasonConfig)
         )
-        .sort((a, b) => a.week - b.week); // Sort by week ascending
+        .sort((a, b) => a.week - b.week); // safe now: regular-season weeks only
       
       let streak = 0;
       let streakType: 'W' | 'L' | 'T' | null = null;
