@@ -134,9 +134,18 @@ Reads use the anon key via `src/lib/supabase/client.ts`. **Writes must use
 `getAdminClient()` from `src/lib/supabase/admin.ts`**, which uses
 `SUPABASE_SERVICE_ROLE_KEY` and throws if reached from the browser.
 
-Row-level security is enabled on every table with public SELECT policies and no
-write policies (`supabase-migrations/004_row_level_security.sql`), so the anon
-key can read and nothing else. This matters because `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+Row-level security is enabled on every table with no write policies
+(`supabase-migrations/004_row_level_security.sql`, extended by `005`), so the
+anon key can read and nothing else. Most tables carry a public SELECT policy;
+the three legacy ones (`articles`, `quad_map`, `schedule`) carry none, so reads
+are denied there too.
+
+**RLS coverage is not a list to maintain by hand.** 004 enabled RLS on the 14
+tables the app queries, but PostgREST exposes all 18, so the other four stayed
+writable by the anon key and Supabase kept mailing `rls_disabled_in_public`
+warnings. After adding any table, run the coverage query at the bottom of 005 —
+`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND NOT
+rowsecurity` — which must return zero rows. This matters because `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 is compiled into the client bundle every visitor downloads — before RLS, that
 key could write to `games` directly and bypass the admin auth entirely.
 

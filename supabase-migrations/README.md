@@ -70,7 +70,7 @@ and in Vercel (Production **and** Preview). Running it first breaks score
 import, playoff seeding and `pnpm sync-players` until the key exists.
 
 **What it does:**
-- `ENABLE ROW LEVEL SECURITY` on all 14 tables
+- `ENABLE ROW LEVEL SECURITY` on the 14 tables the app queries
 - One `FOR SELECT USING (true)` policy each — the site is public and reads with
   the anon key
 - Deliberately **no** write policies; absent a policy, RLS denies the action
@@ -84,3 +84,33 @@ directly, bypassing the admin auth in `src/proxy.ts` entirely. Verified
 `src/lib/supabase/admin.ts`, which uses the service-role key. The service role
 bypasses RLS by design, so no write policies are needed. That client throws if
 it is ever reached from the browser.
+
+### 005_rls_remaining_tables.sql
+
+Covers the four tables 004 missed.
+
+**When to run:** any time after 004. Nothing else depends on it.
+
+**What it does:**
+- `ENABLE ROW LEVEL SECURITY` on `franchise_history`, `articles`, `quad_map`
+  and `schedule`
+- A public read policy on `franchise_history` only — it is the one of the four
+  the app still queries (`getFranchiseNames`). The other three are legacy
+  (`articles` indexes the pre-Contentful archive; `quad_map` and `schedule` are
+  superseded by `team_seasons.quad_id` and `games`) and get no policy, so RLS
+  denies reads as well as writes
+
+**Why:** 004 enabled RLS on a hand-written list of "every table the app
+touches" — 14 of the database's 18. PostgREST exposes all 18, so the anon key
+could still write to the other four, and Supabase's `rls_disabled_in_public`
+advisor kept mailing about it.
+
+**Do not enumerate tables by hand again.** After adding any table, run the
+coverage query at the bottom of the file — it returns every public table
+without RLS, and should always return zero rows:
+
+```sql
+SELECT tablename FROM pg_tables
+WHERE schemaname = 'public' AND NOT rowsecurity
+ORDER BY tablename;
+```
