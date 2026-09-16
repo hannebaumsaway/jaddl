@@ -432,6 +432,10 @@ a result was unusual will invent things; one handed a brief will not.
 - `ARTICLE_VOICE.md` — how to write. Kept out of the brief on purpose: the brief
   is evidence, and baking instructions into it would fix one tone for every
   consumer.
+- `drafts/` — pre-publication working copies, with frontmatter mirroring the
+  `jaddlArticle` fields. Deliberately **not** under `public/`, which Next serves
+  at the site root; a draft at `www.jaddl.com/articles/…` helps nobody.
+  Contentful remains the published source of truth. See `drafts/README.md`.
 
 ### Decisions that are still standing
 
