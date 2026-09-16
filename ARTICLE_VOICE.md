@@ -142,6 +142,12 @@ corpus and read as pastiche:
 - **Do not invent league history.** The archive-mining voice above is only
   credible because the numbers are right. If a cohort stat would land and the
   brief does not have it, write `[CHECK: …]` and leave it for a human.
+- **The brief gives a series' standing, never its shape.** It reports the record
+  before and after, and nothing about how the series got there. "Has never led
+  this series" and "has won six straight in it" are not in the brief and must be
+  computed from the game log before being written. A draft claimed Ryan had
+  "never once been ahead" of James; he won the first six meetings and led as
+  recently as 2022.
 - The brief's `angles` are candidate storylines, not sentences. Take one or two.
   Never list them.
 - **Apply sports judgment before repeating an angle.** `bench-regret` in
