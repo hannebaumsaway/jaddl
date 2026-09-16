@@ -141,6 +141,15 @@ corpus and read as pastiche:
   brief does not have it, write `[CHECK: …]` and leave it for a human.
 - The brief's `angles` are candidate storylines, not sentences. Take one or two.
   Never list them.
+- **Apply sports judgment before repeating an angle.** `bench-regret` in
+  particular is computed mechanically — it fires whenever a benched player
+  outscored a starter by more than the margin, and it cannot tell a genuine
+  lineup blunder from ordinary bad luck. In 2026 Week 1 it flagged Ian for
+  starting Kyler Murray over Jacoby Brissett; every owner alive starts Murray
+  there, and what actually happened is that Murray got pulled after five throws
+  for Carson Wentz. Writing that up as a mistake makes the column look like it
+  does not watch football. Ask whether the alternative was genuinely startable
+  *before kickoff*; if it was not, the story is luck, not error.
 - A multiplier of 2.0x+ is a genuine outlier, ~1.0x is a normal week, under 0.5x
   is why someone lost, and `—` means no baseline — say nothing about that
   player's form.
