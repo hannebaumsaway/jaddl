@@ -20,8 +20,13 @@ import {
 
 /* ------------------------------------------------------------ playoff sets */
 
-/** Teams that appeared in a playoff game, by year. */
-function playoffTeamsByYear(h: LeagueHistoryData): Map<number, Set<number>> {
+/**
+ * Teams that appeared in a playoff game, by year.
+ *
+ * This is the correct playoff-appearance source: `playoff_seeds` holds only
+ * 2025, and seeds computed for a finished season are a projection anyway.
+ */
+export function playoffTeamsByYear(h: LeagueHistoryData): Map<number, Set<number>> {
   const out = new Map<number, Set<number>>();
   for (const g of h.games) {
     if (!g.playoffs) continue;

@@ -124,16 +124,69 @@ export interface GroupTitle {
 }
 
 /**
+ * Whether every regular-season week of a season has been recorded.
+ *
+ * Mirrors `SeasonProgress.regularSeasonComplete` in teams/tables.ts; the two
+ * modules load history independently, so the check exists in both.
+ */
+export function regularSeasonFinished(h: LeagueHistoryData, year: number): boolean {
+  const scheduled = getSeasonConfig(year).regularSeasonWeeks;
+  let played = 0;
+  for (const g of h.games) {
+    if (g.year !== year || g.playoffs) continue;
+    if (g.home_score === null || g.away_score === null) continue;
+    played = Math.max(played, g.week);
+  }
+  return played >= scheduled;
+}
+
+/**
+ * Intra-group records for one season: each team's W-L-T against the other
+ * members of its own division/quad.
+ *
+ * This is the second tiebreaker for a group title, ahead of points for.
+ * Leaving it out picked the wrong 2022 quad winner — Mighty Boom and Tulsa both
+ * finished 6-8, Tulsa scored more, and Mighty Boom won the quad 3-1. The stored
+ * Division Champ trophy says Mighty Boom.
+ */
+function groupRecords(
+  games: HistoryGame[],
+  year: number,
+  members: number[],
+  config: ReturnType<typeof getSeasonConfig>
+): Map<number, Rec> {
+  const recs = new Map<number, Rec>();
+  for (const id of members) recs.set(id, { w: 0, l: 0, t: 0, pf: 0 });
+
+  for (const g of games) {
+    if (g.year !== year) continue;
+    if (!countsTowardRecord(g as any, config)) continue;
+    if (g.home_score === null || g.away_score === null) continue;
+    if (!members.includes(g.home_team_id) || !members.includes(g.away_team_id)) continue;
+
+    const h = recs.get(g.home_team_id)!;
+    const a = recs.get(g.away_team_id)!;
+    if (g.home_score > g.away_score) { h.w++; a.l++; }
+    else if (g.home_score < g.away_score) { a.w++; h.l++; }
+    else { h.t++; a.t++; }
+  }
+  return recs;
+}
+
+/**
  * Every division/quad title a team has won, by computing final standings for
- * each season. Group winner is best overall record, then points for — the
- * order calculateStandings documents. Seasons with no group structure are
- * skipped, as are seasons with no games recorded.
+ * each season. Group winner is best overall record, then group record, then
+ * points for — the order calculateStandings documents. Seasons with no group
+ * structure are skipped, as are seasons with no games recorded.
  */
 export function computeGroupTitles(h: LeagueHistoryData): Map<number, GroupTitle[]> {
   const out = new Map<number, GroupTitle[]>();
 
   for (const season of h.leagueSeasons) {
     if (season.structure_type === 'single_league') continue;
+    // An in-progress season has no winner yet. Without this a brief written in
+    // week 2 congratulates somebody on a division title they have not won.
+    if (!regularSeasonFinished(h, season.year)) continue;
     const recs = recordsForSeason(h.games, season.year, Number.MAX_SAFE_INTEGER);
     if (recs.size === 0) continue;
 
@@ -146,12 +199,16 @@ export function computeGroupTitles(h: LeagueHistoryData): Map<number, GroupTitle
       groups.get(key)!.push(ts.team_id);
     }
 
+    const config = getSeasonConfig(season.year);
+
     for (const [key, teamIds] of groups) {
-      const ranked = teamIds
-        .filter(id => recs.has(id))
+      const members = teamIds.filter(id => recs.has(id));
+      const groupRecs = groupRecords(h.games, season.year, members, config);
+      const ranked = members
         .sort((a, b) => {
           const ra = recs.get(a)!, rb = recs.get(b)!;
-          return winPct(rb) - winPct(ra) || rb.pf - ra.pf;
+          const ga = groupRecs.get(a)!, gb = groupRecs.get(b)!;
+          return winPct(rb) - winPct(ra) || winPct(gb) - winPct(ga) || rb.pf - ra.pf;
         });
       const winner = ranked[0];
       if (winner === undefined) continue;

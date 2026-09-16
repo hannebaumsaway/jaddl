@@ -4,6 +4,7 @@
 
 import { supabase } from './client';
 import { getTeamProfiles, getTrophies } from '../contentful/api';
+import { getSeasonConfig } from './api';
 
 export interface LeagueChampion {
   year: number;
@@ -169,6 +170,7 @@ export async function getSeasonRecords(): Promise<LeagueHistory['seasonRecords']
       .from('games')
       .select(`
         year,
+        week,
         home_team_id,
         away_team_id,
         home_score,
@@ -206,13 +208,25 @@ export async function getSeasonRecords(): Promise<LeagueHistory['seasonRecords']
       return contentfulTeam?.shortName || fallbackName;
     };
 
-    // Determine current season (latest year) and exclude from seasonRecords calculations
-    const currentSeasonYear = (games && games.length > 0)
-      ? Math.max(...games.map((g: any) => g.year as number))
-      : undefined;
+    // Season records only count seasons that finished. This used to exclude
+    // "the latest year", which was wrong in both directions: it hid a completed
+    // season's records until the next one kicked off, and it would have counted
+    // an unfinished season the moment a newer one appeared. Ask how many weeks
+    // were actually played instead.
+    const weeksPlayed = new Map<number, number>();
+    games?.forEach((g: any) => {
+      if (g.playoffs) return;
+      weeksPlayed.set(g.year, Math.max(weeksPlayed.get(g.year) ?? 0, g.week ?? 0));
+    });
+    const seasonFinished = (year: number) =>
+      (weeksPlayed.get(year) ?? 0) >= getSeasonConfig(year).regularSeasonWeeks;
 
     games?.forEach((game: any) => {
-      const isCurrentSeason = currentSeasonYear !== undefined && game.year === currentSeasonYear;
+      // Skip an unfinished season outright. The old guard only suppressed the
+      // W-L tally, so a partial season still accumulated points and its
+      // one-week total won "lowest season score" the moment 2026 kicked off.
+      if (!seasonFinished(game.year)) return;
+
       const homeKey = `${game.home_team_id}-${game.year}`;
       const awayKey = `${game.away_team_id}-${game.year}`;
 
@@ -229,7 +243,7 @@ export async function getSeasonRecords(): Promise<LeagueHistory['seasonRecords']
       }
       const homeStats = teamSeasonStats.get(homeKey)!;
       homeStats.totalPoints += game.home_score || 0;
-      if (!game.playoffs && !isCurrentSeason) {
+      if (!game.playoffs) {
         if ((game.home_score || 0) > (game.away_score || 0)) {
           homeStats.wins++;
         } else {
@@ -250,7 +264,7 @@ export async function getSeasonRecords(): Promise<LeagueHistory['seasonRecords']
       }
       const awayStats = teamSeasonStats.get(awayKey)!;
       awayStats.totalPoints += game.away_score || 0;
-      if (!game.playoffs && !isCurrentSeason) {
+      if (!game.playoffs) {
         if ((game.away_score || 0) > (game.home_score || 0)) {
           awayStats.wins++;
         } else {
