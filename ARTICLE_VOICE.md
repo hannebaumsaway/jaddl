@@ -167,9 +167,15 @@ corpus and read as pastiche:
 ## Real-world NFL context
 
 The older pieces use real NFL detail freely — Eddie Lacy scoring 0.3, Marshawn
-Lynch's goose egg, Rodgers having "a really bad day." **The brief has none of
-it.** It knows a player's score, never how they got it.
+Lynch's goose egg, Rodgers having "a really bad day."
 
-Use real NFL detail only where it is genuinely known. An invented NFL narrative
-is checkable by every reader and is the one error that would discredit the
-archive-mining the rest of the voice depends on.
+**The brief now carries this**, from ESPN box scores, for 2023 onward. Each
+starter shows a real stat line, the game it came from, and any derived notes:
+a quarterback pulled early, a receiver with four targets, a defense that
+conceded 36 with two sacks. Use it freely — that is what it is for.
+
+Still never invent NFL narrative. If the brief does not have it, it is not
+known: anything after a model's training cutoff is fabrication, and an invented
+NFL detail is checkable by every reader, which would discredit the
+archive-mining the rest of the voice depends on. Pre-2023 briefs carry no NFL
+context at all and say so.

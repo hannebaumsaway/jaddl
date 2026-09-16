@@ -454,10 +454,16 @@ a result was unusual will invent things; one handed a brief will not.
 
 - A brief reads the **result** from Supabase, so a week must be imported before
   a brief works. In-season the order is import scores → build brief → write.
-- The brief has **no real-world NFL context**. It knows a player scored 42.75,
-  never how. That texture carries a lot of the published writing, and an
-  invented NFL narrative is checkable by every reader — so it is left out rather
-  than guessed.
+- Real-world NFL context comes from `src/lib/nfl/espn.ts`, which reads ESPN's
+  public box scores and attaches a stat line, game result and derived notes to
+  every starter. Matching is normalized name + team — Sleeper and ESPN disagree
+  only on Washington (WAS/WSH), and suffixes like "Sr." differ — which hit
+  108/108 starters in 2026 Week 1. Uncached on purpose: a week is ~17 requests
+  and an in-progress week wants fresh data.
+  **The `qb-pulled` note is the load-bearing one.** Without it a quarterback
+  benched after five throws is indistinguishable from one who played badly all
+  day, and a recap blames an owner for a lineup nobody would have set
+  differently. That exact mistake reached a draft before this existed.
 
 ## Conventions
 
