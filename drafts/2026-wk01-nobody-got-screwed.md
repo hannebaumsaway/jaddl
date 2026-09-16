@@ -51,7 +51,7 @@ Adam streamed the Houston defense against Buffalo. Bold. Josh Allen went 20-of-2
 
 Namely: he bought the entire New Orleans passing game. Tyler Shough went 35-of-56 for 410 and three scores — 27.3. Chris Olave caught ten for 182 without sniffing the end zone and still posted 31.7. Fifty-nine points out of a team that lost by one in overtime.
 
-Alex's leading man was Bryce Young at 37.05 — 361 yards, three touchdowns, one pick, and a 59-37 loss. Everybody in that football game had a lovely afternoon except the people obliged to watch it.
+Alex's leading man was Bryce Young at 37.05 — 361 yards, three touchdowns, one pick, fifteen scoring plays, ninety-six combined points. Everybody with a stake in that game had a hell of an afternoon except Panthers fans and Alex, whose best player did all of that and still watched him lose by 34.7.
 
 ## Dinos 170.35 | Lanniesters 136.95
 
