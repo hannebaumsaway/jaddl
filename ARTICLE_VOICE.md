@@ -102,7 +102,10 @@ Use the league's own vocabulary. It is in the database:
 - Teams get nicknames and remembered former names: "the 'Shanks", "Cammy Cam",
   "IPA Connoisseur—then known as the IPA Guzzlers; a much grosser, less
   inspiring name."
-- Owners by first name, freely and directly.
+- Owners by first name, freely and directly. `team_bios.owner` holds the formal
+  name; some go by a nickname and both are fair game — Peter is Pete, Nathan is
+  Nate (his team is literally *Nate's Dinos or Whoever*). Lannie is already the
+  nickname. Use whichever reads better in the sentence.
 
 ## Devices
 
