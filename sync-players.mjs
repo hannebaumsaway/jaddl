@@ -26,13 +26,20 @@ const MIN_HOURS_BETWEEN_SYNCS = 20;
 
 const force = process.argv.includes('--force');
 
+// Writes need the service-role key: row-level security (migration 004) lets the
+// anon key read and nothing else. This script is the CLI twin of
+// syncPlayers() in src/lib/sleeper/players.ts, which goes through
+// getAdminClient() for the same reason.
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local');
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY in .env.local.');
+  console.error('Row-level security blocks writes from the anon key; see env.example.');
   process.exit(1);
 }
-const supabase = createClient(url, key);
+const supabase = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const isFantasyRelevant = p =>
   (p.position && FANTASY_POSITIONS.has(p.position)) ||
