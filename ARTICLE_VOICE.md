@@ -89,7 +89,12 @@ Quotes attributed to real NFL players must be real or omitted.
 
 Use the league's own vocabulary. It is in the database:
 
-- **Jared's Goblet** — the championship. The final is the **Jared Bowl**.
+- **Court-Ordered Limousine** — the championship trophy. The title game itself
+  is the **Jared Bowl**; losing it earns the **Surrendered Keys**.
+- **Jared's Goblet** is a *division/quad* title, not the championship — 40 rows
+  against the Limousine's 23. The 2015 piece calling IPA "Two Jared's Goblets"
+  means two West titles, not two championships. Getting this backwards is easy
+  and very visible: Lannie has five Goblets and zero Limousines.
 - Divisions and quads have names with personality — Winterfell, The Holy
   Trinity, The Abusement Park, Flavortown, Old School East. Refer to them by
   name, and treat a bad one as a character: *"how fucking bad is the Holy
