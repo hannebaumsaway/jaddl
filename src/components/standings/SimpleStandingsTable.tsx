@@ -64,7 +64,7 @@ export function SimpleStandingsTable({ title, records, teamLookup, isSubTable = 
               {records.map((record, index) => {
                 const team = teamLookup.get(record.team_id);
                 const teamName = team?.teamName || record.team?.team_name || 'Unknown Team';
-                const shortName = team?.shortName || record.team?.short_name || 'UNK';
+                const shortName = team?.shortName || 'UNK';
                 const logo = team?.logo?.url;
                 const isLastRow = index === records.length - 1;
                 const hasQuadGroup = (record.quad_wins !== undefined) || (record.quad_losses !== undefined) || (record.quad_ties !== undefined);

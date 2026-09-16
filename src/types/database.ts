@@ -1,17 +1,20 @@
 // Supabase Database Schema Types
-// 
-// IMPORTANT: Team.id maps to Contentful jaddlTeam.teamId
-// This links dynamic sports data (Supabase) with static team info (Contentful)
+//
+// IMPORTANT: `teams.team_id` maps to Contentful `jaddlTeam.teamId`. That join is
+// what links dynamic league data (Supabase) to static team info (Contentful).
+// There is no `teams.id` column — see `src/lib/utils/team-mapping.ts`.
+//
+// The interfaces below marked "verified" were checked column-by-column against
+// the live database. `database.types.ts` is stale and disagrees with several of
+// them; this file wins.
 
+/**
+ * verified: `teams` really does hold only these two columns. Short name, logo
+ * and active status come from Contentful; the owner comes from `team_bios`.
+ */
 export interface Team {
-  team_id: number; // Maps to Contentful jaddlTeam.teamId (actual DB field)
-  team_name: string; // Actual DB field
-  short_name?: string; // May not exist in all records
-  logo?: string;
-  owner_name?: string; // May not exist in all records
-  active?: boolean; // May not exist in all records
-  created_at?: string;
-  updated_at?: string;
+  team_id: number; // Maps to Contentful jaddlTeam.teamId
+  team_name: string;
 }
 
 export interface Game {
@@ -70,107 +73,118 @@ export interface Quad {
   quad_name: string;
 }
 
+/**
+ * verified. Descriptions and images live on the Contentful `jaddlTrophy` entry
+ * with a matching `trophyId`, not here.
+ *
+ * Two ids are load-bearing across the app: 1 is the championship
+ * ("Court-Ordered Limousine") and 6 is the weekly high score ("Briefly Badass").
+ */
 export interface Trophy {
-  id: number;
-  name: string;
-  description?: string;
-  emoji?: string;
-  category: 'championship' | 'playoff' | 'regular_season' | 'weekly' | 'special';
-  is_recurring: boolean;
-  created_at: string;
-  updated_at: string;
+  trophy_id: number;
+  trophy_name: string;
 }
 
+/** The championship trophy. A team's title years are its trophy_case rows here. */
+export const CHAMPIONSHIP_TROPHY_ID = 1;
+/** Weekly high score. Awarded by the Sleeper import; `amount` counts the weeks. */
+export const WEEKLY_HIGH_SCORE_TROPHY_ID = 6;
+
+/**
+ * verified. Note `amount` is a COUNTER, not a row-per-award: the weekly
+ * high-score trophy increments it rather than inserting a row per week, so
+ * "how many times has this team won it" is SUM(amount), not COUNT(*).
+ *
+ * This table runs from 2003, four seasons earlier than `games`. It is therefore
+ * the authoritative source for championships — anything derived from the game
+ * log necessarily misses 2003-2006.
+ */
 export interface TrophyCase {
-  id: number;
-  trophy_id: number;
   team_id: number;
+  trophy_id: number;
   year: number;
-  points_for?: number;
-  points_against?: number;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
+  amount: number;
   // Relations
   trophy?: Trophy;
   team?: Team;
 }
 
+/**
+ * verified. Rivalries are permanent, not per-season, and each carries its own
+ * trophy. There are six, each with exactly two teams.
+ */
 export interface Rivalry {
-  id: number;
-  name: string;
-  description?: string;
-  season_year: number;
-  created_at: string;
-  updated_at: string;
+  rivalry_id: number;
+  rivalry_name: string;
+  trophy_id: number;
 }
 
+/** verified. Join table; two rows per rivalry. */
 export interface Rival {
-  id: number;
-  rivalry_id: number;
   team_id: number;
-  created_at: string;
-  updated_at: string;
+  rivalry_id: number;
   // Relations
   rivalry?: Rivalry;
   team?: Team;
 }
 
+/**
+ * verified. One row per team, NOT per season — there is no `season_year` column.
+ *
+ * `owner`, `location` and `first_year` are populated for every active team;
+ * `bio` is currently empty everywhere. `first_year` predates the game log (some
+ * are 2003-2006), so it is a franchise fact, not a statistical one.
+ */
 export interface TeamBio {
-  id: number;
   team_id: number;
-  season_year: number;
-  owner_bio?: string;
-  team_story?: string;
-  favorite_players?: string[];
-  draft_strategy?: string;
-  created_at: string;
-  updated_at: string;
+  owner: string;
+  location?: string;
+  bio?: string | null;
+  first_year?: number;
   // Relations
   team?: Team;
 }
 
+/**
+ * verified. This is a NAME LINEAGE, not a change log — there are no dates and no
+ * before/after pair. `franchise_order` runs 0..n over a franchise's former
+ * names, e.g. team 3: Bad Newz Kennels -> Leavenworth Law Dogs -> The Return of
+ * Ron Mexico.
+ *
+ * Some rows repeat the team's current name, so consumers must dedupe against
+ * `teams.team_name` before presenting these as *former* names.
+ */
 export interface FranchiseHistory {
-  id: number;
   team_id: number;
-  old_name: string;
-  new_name: string;
-  change_date: string;
-  reason?: string;
-  created_at: string;
-  updated_at: string;
+  franchise_order: number;
+  franchise_name: string;
   // Relations
   team?: Team;
 }
 
+/**
+ * verified. Draft ORDER only — which slot a team held in a year. There are no
+ * players, rounds or positions recorded, and the table stops after 2020.
+ */
 export interface Draft {
-  id: number;
-  season_year: number;
-  round: number;
+  year: number;
   pick: number;
   team_id: number;
-  player_name: string;
-  position: string;
-  nfl_team?: string;
-  created_at: string;
-  updated_at: string;
   // Relations
   team?: Team;
 }
 
+/**
+ * verified. A legacy index of the pre-Contentful article archive, keyed by
+ * `page_id` strings like "2008_1_1". It carries no titles, slugs or bodies —
+ * Contentful `jaddlArticle` is the real article source and supersedes this.
+ * Kept as a type only because the table still exists.
+ */
 export interface Article {
-  id: number;
-  contentful_id: string;
-  title: string;
-  slug: string;
-  summary?: string;
-  featured_team_id?: number;
-  tags?: string[];
-  published_at: string;
-  created_at: string;
-  updated_at: string;
-  // Relations
-  featured_team?: Team;
+  entry_id: number;
+  page_id: string;
+  team_id: number;
+  feature: boolean;
 }
 
 // Derived/Computed Types

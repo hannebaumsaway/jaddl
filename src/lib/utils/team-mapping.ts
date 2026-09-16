@@ -1,20 +1,22 @@
 import { ProcessedTeamProfile } from '@/types/contentful';
-import { Team, TeamRecord } from '@/types/database';
+import { Team, TeamBio, TeamRecord } from '@/types/database';
 
 /**
  * Utility functions for mapping between Contentful teams and Supabase teams
  * Contentful: Contains static team info (name, logo, yearEstablished, etc.)
  * Supabase: Contains dynamic team data (records, scores, standings, etc.)
  * 
- * The link is: Contentful.teamId === Supabase.Team.id
+ * The link is: Contentful.teamId === Supabase.teams.team_id. There is no
+ * `teams.id` column; matching on one silently produced `undefined` for every
+ * team here, which is why owner names read "Unknown Owner" everywhere.
  */
 
 export interface EnrichedTeam extends ProcessedTeamProfile {
   // Add Supabase data to Contentful team
   supabaseData?: Team;
   currentRecord?: TeamRecord;
-  ownerName?: string; // From Supabase
-  active?: boolean; // From Supabase
+  ownerName?: string; // From Supabase team_bios
+  active?: boolean; // From Contentful — `teams` has no active column
 }
 
 /**
@@ -23,25 +25,27 @@ export interface EnrichedTeam extends ProcessedTeamProfile {
 export function enrichTeamsWithSupabaseData(
   contentfulTeams: ProcessedTeamProfile[],
   supabaseTeams: Team[],
-  teamRecords?: TeamRecord[]
+  teamRecords?: TeamRecord[],
+  teamBios?: TeamBio[]
 ): EnrichedTeam[] {
   return contentfulTeams.map(contentfulTeam => {
-    // Find matching Supabase team by ID
     const supabaseTeam = supabaseTeams.find(
-      (team: any) => team.id === contentfulTeam.teamId
+      team => team.team_id === contentfulTeam.teamId
     );
-    
-    // Find current season record
+
     const currentRecord = teamRecords?.find(
-      (record: any) => record.team_id === contentfulTeam.teamId
+      record => record.team_id === contentfulTeam.teamId
     );
+
+    // Owners live in team_bios, not teams. Pass bios in to populate this.
+    const bio = teamBios?.find(b => b.team_id === contentfulTeam.teamId);
 
     return {
       ...contentfulTeam,
       supabaseData: supabaseTeam,
       currentRecord,
-      ownerName: supabaseTeam?.owner_name,
-      active: supabaseTeam?.active ?? true,
+      ownerName: bio?.owner,
+      active: contentfulTeam.active ?? true,
     };
   });
 }
@@ -53,8 +57,8 @@ export function getTeamDisplayData(team: EnrichedTeam) {
   return {
     id: team.id, // Contentful ID for routing
     teamId: team.teamId, // Supabase ID for data queries
-    name: team.teamName || (team.supabaseData as any)?.name || 'Unknown Team',
-    shortName: team.shortName || (team.supabaseData as any)?.short_name || 'TBD',
+    name: team.teamName || team.supabaseData?.team_name || 'Unknown Team',
+    shortName: team.shortName || 'TBD',
     logo: team.logo || undefined, // Contentful logo takes priority
     ownerName: team.ownerName || 'Unknown Owner',
     yearEstablished: team.yearEstablished,
@@ -124,7 +128,7 @@ export function findMissingContentfulTeams(
   supabaseTeams: Team[]
 ): Team[] {
   const contentfulTeamIds = contentfulTeams.map(team => team.teamId);
-  return supabaseTeams.filter((team: any) => !contentfulTeamIds.includes(team.id));
+  return supabaseTeams.filter(team => !contentfulTeamIds.includes(team.team_id));
 }
 
 /**
@@ -134,6 +138,6 @@ export function findMissingSupabaseTeams(
   contentfulTeams: ProcessedTeamProfile[],
   supabaseTeams: Team[]
 ): ProcessedTeamProfile[] {
-  const supabaseTeamIds = supabaseTeams.map((team: any) => team.id);
+  const supabaseTeamIds = supabaseTeams.map(team => team.team_id);
   return contentfulTeams.filter(team => !supabaseTeamIds.includes(team.teamId));
 }

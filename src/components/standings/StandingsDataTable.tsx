@@ -63,7 +63,7 @@ export function StandingsDataTable({
     records.map((record, index) => {
       const team = teamLookup.get(record.team_id);
       const teamName = team?.teamName || record.team?.team_name || 'Unknown Team';
-      const shortName = team?.shortName || record.team?.short_name || 'UNK';
+      const shortName = team?.shortName || 'UNK';
       const logo = team?.logo?.url;
 
       return {
