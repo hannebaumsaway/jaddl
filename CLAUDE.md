@@ -85,7 +85,11 @@ returned `null`/`[]` for every call. They are fixed; the live shapes are:
 - `franchise_history` is a **name lineage** — `team_id, franchise_order,
   franchise_name` — not an old/new change log. Rows may repeat the current
   name, so dedupe before calling them *former* names.
-- `drafts` is draft **order** only (`year, pick, team_id`) and stops after 2020.
+- `drafts` is draft **order** only (`year, pick, team_id`), and the years it
+  covers are **not contiguous** — 2007-2020, then nothing until 2026. Read
+  `DraftProfile.years` (the recorded seasons) or `eraLabel` ("2007-2020 and
+  2026"); never a `{from, to}` span, which renders the hole as five seasons of
+  data that do not exist.
 - `trophies` is `trophy_id, trophy_name`; `trophy_case` is `team_id, trophy_id,
   year, amount`, where **`amount` is a counter**, so "how many weekly high
   scores" is `SUM(amount)`, not `COUNT(*)`.
@@ -255,23 +259,82 @@ mostly draws the league-wide scoring step rather than the team.
 `deriveObservations(dossier)` in `src/lib/teams/observations.ts` feeds a
 rotating card on the team page. These are **detectors, not written copy**: each
 one interrogates the dossier, returns `null` when the answer is unremarkable,
-and phrases itself from live numbers when it fires. Only the highest-weighted
-few are shown.
+and phrases itself from live numbers when it fires.
 
 Written this way on purpose. Hand-writing twelve teams' worth of facts is wrong
 by the following Sunday — the luck gap, streaks and ranks all move as weeks are
 imported. The judgment lives in *which* patterns are worth noticing and how
 they are worded; the numbers stay true.
 
-**Never assert a league-wide superlative a detector cannot check.** The dossier
-supports comparative claims only where it carries a rank (`ranks.*`,
+**Three rules, all learned by breaking them.**
+
+**1. Fire on something unusual, never on a slot that always exists.** Every
+franchise has a worst opponent, a best season and a worst season. A detector
+that reports the extreme of a list that is never empty produces the same
+sentence on every page with the nouns swapped — which is exactly what happened:
+`nemesis` fired for 9 of 17 franchises, `swing` for 8, and every team had an "X
+owns them" card. A threshold must be measured against the team's own baseline
+(`nemesis` now needs a gap against their own career win rate) or against a
+league-wide rarity figure. A threshold on the *size* of the extreme does not
+fix this: `massacre` was tried at 85 points (12/17), then at a 2x score ratio
+(10/17), before the measured distribution showed it running smoothly from 1.6x
+to 3.0x with no natural cut — because the most extreme game of a long career is
+always extreme.
+
+**2. Do not restate another team's card.** Head-to-head facts are symmetric.
+"Odouls own them, 2-12" and "their favourite opponent is In Pursuit, 12-2" are
+one series printed twice, and 2011's 156-59.8 was showing up as both Riley
+County's biggest win and Red Hornets' worst loss. Where a fact has two sides,
+only the side it is more remarkable for may fire — `favourite` therefore sets a
+much higher bar than `nemesis`, and `massacre` fires only from the winner's.
+
+**3. Never assert a league-wide superlative a detector cannot check.** The
+dossier supports comparative claims only where it carries a rank (`ranks.*`,
 `luck.pointsAgainstRank`) or a rarity figure (`streakRarity`'s `occurrences`
 and `longestEver`). An early version claimed a team's worst head-to-head was
 "the most lopsided series either franchise has with anyone" — `opponents.worst`
 supports no such thing.
 
-Every active franchise currently fires 3-5. If that floor drops, add detectors
-rather than loosening the thresholds on existing ones.
+**The eight detectors that fire for several franchises carry ten phrasings
+each**, chosen deterministically — 110 sentences across 11 variant sets. Two
+rules govern them.
+
+*Every variant in a set must be interchangeable*: same claim, same figures,
+different shape. A variant that reaches for a flourish the dossier cannot
+support is a rule-3 violation that only surfaces on the franchises it happens
+to land on.
+
+*The index is a SUM, not a hash of a seed* — `(teamId + leagueShift +
+hash(detectorId)) % variants.length`. Hashing a team-plus-numbers seed is a
+random draw into ten bins, and random draws collide: measured, it put 9 of 43
+firings onto a phrasing another team already had, including two whose numbers
+were close enough to read like a copy-paste bug. Summing keeps the terms
+separable — `teamId` is unique so it spreads teams as a permutation rather than
+a draw (3 collisions instead of 9), `leagueShift` is identical for every active
+franchise in a render so it rotates the whole assignment as weeks are imported
+rather than freezing the copy for a year, and `hash(detectorId)` stops a team
+sitting on the same index down the whole card stack. **Never make this
+random**: the page is server-rendered per request, so a random pick rewords the
+card on refresh, or mid-read while it rotates. `leagueShift` reads the team's
+latest season, which is uniform across active franchises but not for defunct
+ones, so a defunct team draws from its own rotation.
+
+**Selection is facet-first, not weight-first.** Every observation carries a
+`facet` (luck, opponent, streak, honors, postseason, scoring, season-shape,
+game, identity, draft, form) and at most one card per facet is taken before any
+second card. Taking the top five by weight gave pages two head-to-head splits
+and two streak facts while bespoke observations sat unused — and because the
+high-weight detectors are the general ones, it gave every page the same five
+shapes.
+
+Seasonal detectors read `done(d)` (completed seasons only) and any "N seasons
+since" count measures to `lastSettled(d)`, per **A season is not complete until
+it is complete** above. `form-*` skips defunct franchises, for which "right
+now" means 2007.
+
+Active franchises fire 4-16 detectors each; the four defunct one-season teams
+fire 1-5. If the active floor drops, add detectors rather than loosening the
+thresholds on existing ones.
 
 ### Prestige
 
@@ -329,6 +392,22 @@ are: 1 Court-Ordered Limousine = champion; 2 Surrendered Keys = loses the final;
 4 Virtual Vermeil = regular-season points leader; 5 Torn Hoodie = best draft,
 voted; 6 Briefly Badass = weekly top scorer. Ids 8-13 are rivalry trophies with
 one row each — current holder, not an annual award.
+
+**A finals record needs both trophies, and the game log needs both too.**
+`honors.finals` (`src/lib/teams/honors.ts`) unions Court-Ordered Limousine and
+Surrendered Keys with the game-derived champion/runner-up. Use it rather than
+`career.playoff.byRound`, which is game-log only and so reported Fightin'
+Longshanks as 3-0 in finals against a trophy case holding four titles — 2005
+predates every recorded game. Four franchises were understated this way, one
+for each pre-2007 title.
+
+**The two sides do not cover the same era.** Champions are recorded from 2003,
+but the first Surrendered Keys row is 2007, so the four pre-2007 finals name a
+winner and no loser. Finals *wins* are therefore complete and finals *losses*
+are not: `finals.lossesKnownFrom` marks where that side becomes trustworthy and
+`finals.lossesComplete` says whether a given franchise predates it. **Nothing
+may claim a team "has never lost a final" when `lossesComplete` is false** —
+the `finals-unbeaten` observation swaps to a phrasing that names the gap.
 
 **Three trophies mark a group title, in different eras**, which is why none of
 them alone looks like a coherent award:
