@@ -179,7 +179,7 @@ function render(d: TeamDossier): string {
   if (d.opponents.worst) L.push(`  worst matchup: ${d.opponents.worst.opponentName} (${pct(d.opponents.worst.winPct)})`);
 
   if (d.draft) {
-    rule(`DRAFT ORDER (${d.draft.era.from}-${d.draft.era.to})`);
+    rule(`DRAFT ORDER (${d.draft.eraLabel})`);
     L.push(`  average pick ${n2(d.draft.averagePick)}` +
       (d.draft.earliest ? `   earliest ${d.draft.earliest.pick} (${d.draft.earliest.year})` : '') +
       (d.draft.latest ? `   latest ${d.draft.latest.pick} (${d.draft.latest.year})` : ''));

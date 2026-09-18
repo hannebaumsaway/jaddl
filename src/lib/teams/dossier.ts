@@ -51,12 +51,37 @@ import { buildHonors, computeGroupTitlesFromTables, type Honors } from './honors
 import { computePrestige, type Prestige } from './prestige';
 
 export interface DraftProfile {
-  /** Draft order is only recorded for these seasons. */
-  era: { from: number; to: number };
+  /**
+   * The seasons draft order is actually recorded for, ascending and deduped.
+   *
+   * This replaced a `{ from, to }` span, which was a lie the moment the data
+   * gained a hole: `drafts` runs 2007-2020 and then jumps to 2026, and the
+   * span rendered that as "the 2007-2026 drafts" — and, worse, as "across
+   * every recorded draft (2007-2026)", which claims five seasons that are not
+   * there. Use `years.length` for a count and `eraLabel` for prose.
+   */
+  years: number[];
+  /** Those years with consecutive runs collapsed: "2007-2020 and 2026". */
+  eraLabel: string;
   picks: { year: number; pick: number }[];
   averagePick: number;
   earliest: { year: number; pick: number } | null;
   latest: { year: number; pick: number } | null;
+}
+
+/** Collapse a sorted year list into runs: [2007..2020, 2026] -> "2007-2020 and 2026". */
+function describeYears(years: number[]): string {
+  if (years.length === 0) return '';
+  const runs: [number, number][] = [];
+  for (const y of years) {
+    const last = runs[runs.length - 1];
+    if (last && y === last[1] + 1) last[1] = y;
+    else runs.push([y, y]);
+  }
+  const parts = runs.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`));
+  return parts.length === 1
+    ? parts[0]
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 export interface TeamDossier {
@@ -94,11 +119,12 @@ function buildDraftProfile(rows: Draft[]): DraftProfile | null {
     .sort((a, b) => a.year - b.year);
   if (picks.length === 0) return null;
 
-  const years = picks.map(p => p.year);
+  const years = [...new Set(picks.map(p => p.year))].sort((a, b) => a - b);
   const bySlot = [...picks].sort((a, b) => a.pick - b.pick || a.year - b.year);
 
   return {
-    era: { from: Math.min(...years), to: Math.max(...years) },
+    years,
+    eraLabel: describeYears(years),
     picks,
     averagePick: Math.round((picks.reduce((a, p) => a + p.pick, 0) / picks.length) * 100) / 100,
     earliest: bySlot[0] ?? null,
@@ -197,7 +223,14 @@ export async function assembleDossier(params: {
     briefsTitles.get(teamId) ?? []
   );
 
-  const honors = buildHonors(history, tables, teamId, trophyCase, groupTitles);
+  const honors = buildHonors(
+    history,
+    tables,
+    teamId,
+    trophyCase,
+    groupTitles,
+    identity.firstYear ?? identity.firstSeasonWithGames
+  );
   const opponents = opponentSplits(log, teamNames);
   const rivalry = params.resolveRivalry
     ? await rivalryFor(teamId, opponents.splits)
@@ -226,7 +259,7 @@ export async function assembleDossier(params: {
     firstTrophyYear !== null && firstGameYear !== null && firstTrophyYear < firstGameYear
       ? `Trophies date to ${firstTrophyYear}, so titles here predate the game log.`
       : null,
-    draft ? `Draft order is recorded for ${draft.era.from}-${draft.era.to} only.` : null,
+    draft ? `Draft order is recorded for ${draft.eraLabel} only.` : null,
   ]
     .filter(Boolean)
     .join(' ');

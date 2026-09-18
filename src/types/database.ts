@@ -87,6 +87,21 @@ export interface Trophy {
 
 /** The championship trophy. A team's title years are its trophy_case rows here. */
 export const CHAMPIONSHIP_TROPHY_ID = 1;
+/**
+ * "Surrendered Keys" — awarded to the team that LOSES the final.
+ *
+ * Paired with the championship trophy this gives a finals record over the full
+ * trophy era, which the game log cannot: `games` starts in 2007 and misses the
+ * 2003-2006 finals entirely. `pnpm dossier --verify` asserts it against the
+ * game-derived runner-up, 19/19.
+ *
+ * ONE-SIDED COVERAGE, and it matters. Champions are recorded from 2003, but
+ * the first Surrendered Keys row is 2007 — the four pre-2007 finals record a
+ * winner and no loser. So finals WINS are complete from 2003 while finals
+ * LOSSES are only known from 2007, and nothing may claim a team "has never
+ * lost a final" over a span the league never wrote down.
+ */
+export const RUNNER_UP_TROPHY_ID = 2;
 /** Weekly high score. Awarded by the Sleeper import; `amount` counts the weeks. */
 export const WEEKLY_HIGH_SCORE_TROPHY_ID = 6;
 

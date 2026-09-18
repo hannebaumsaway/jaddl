@@ -15,7 +15,11 @@
 
 import type { LeagueHistoryData, GroupTitle } from '../briefs/history';
 import { playoffTeamsByYear } from '../briefs/cohorts';
-import { CHAMPIONSHIP_TROPHY_ID, type TrophyCase } from '@/types/database';
+import {
+  CHAMPIONSHIP_TROPHY_ID,
+  RUNNER_UP_TROPHY_ID,
+  type TrophyCase,
+} from '@/types/database';
 import { type SeasonTables, rankSeason, regularSeasonSettled } from './tables';
 import { countsTowardPoints, isPlayed } from './game-log';
 
@@ -25,6 +29,31 @@ export interface TrophyWin {
   year: number;
   /** A counter, not a row count — the weekly trophy increments it. */
   amount: number;
+}
+
+/**
+ * A franchise's record in title games, over the widest span each side is known.
+ *
+ * Neither source alone answers this. The game log starts in 2007, so
+ * `career.playoff.byRound` reported Fightin' Longshanks as 3-0 in finals when
+ * the trophy case says four titles — the 2005 one predates every game. The
+ * trophy case reaches back to 2003, but only for winners: the first
+ * Surrendered Keys row is 2007, so the four pre-2007 finals name a champion
+ * and no runner-up.
+ *
+ * Hence `lossesKnownFrom`. Wins are complete; losses are not, and a claim like
+ * "they have never lost a final" is only sayable for a franchise whose whole
+ * history sits inside the recorded window.
+ */
+export interface FinalsRecord {
+  /** Years they won the final. Trophy case (2003+), unioned with the game log. */
+  wins: number[];
+  /** Years they lost it. Surrendered Keys unioned with the game-derived runner-up. */
+  losses: number[];
+  /** The first season a final's LOSER was recorded anywhere. Before this, unknown. */
+  lossesKnownFrom: number | null;
+  /** Whether the franchise played any season the loser was not recorded for. */
+  lossesComplete: boolean;
 }
 
 export interface Honors {
@@ -40,6 +69,8 @@ export interface Honors {
   groupTitles: GroupTitle[];
   playoffAppearances: number[];
   championshipGameAppearances: number[];
+  /** Finals record across both sources. Prefer this over `career.playoff.byRound`. */
+  finals: FinalsRecord;
   /** Seasons the franchise led the league in regular-season points. */
   pointsTitles: number[];
   /**
@@ -91,7 +122,9 @@ export function buildHonors(
   tables: SeasonTables,
   teamId: number,
   trophyCase: TrophyCase[],
-  groupTitles: GroupTitle[]
+  groupTitles: GroupTitle[],
+  /** The franchise's first season, used to scope the finals-loss coverage gap. */
+  firstSeason: number | null = null
 ): Honors {
   const mine = trophyCase.filter(t => t.team_id === teamId);
 
@@ -101,8 +134,10 @@ export function buildHonors(
 
   const championshipsFromGames: number[] = [];
   const championshipGameAppearances: number[] = [];
+  const runnerUpFromGames: number[] = [];
   for (const [year, shape] of tables.playoffShape) {
     if (shape.championId === teamId) championshipsFromGames.push(year);
+    if (shape.runnerUpId === teamId) runnerUpFromGames.push(year);
     if (shape.championId === teamId || shape.runnerUpId === teamId) {
       championshipGameAppearances.push(year);
     }
@@ -142,6 +177,34 @@ export function buildHonors(
     .filter(r => r.count > 0);
   const weeklyHighTotal = weeklyHighScoresByYear.reduce((a, r) => a + r.count, 0);
 
+  /*
+   * Finals record. Wins come from both sources unioned, which is what reaches
+   * back to 2003; losses likewise, but the trophy case has no Surrendered Keys
+   * row before 2007, so `lossesKnownFrom` marks where that side becomes
+   * trustworthy and `lossesComplete` says whether this franchise predates it.
+   */
+  const finalsWins = [...new Set([...championships, ...championshipsFromGames])]
+    .sort((a, b) => a - b);
+  const runnerUpFromTrophy = mine
+    .filter(t => t.trophy_id === RUNNER_UP_TROPHY_ID)
+    .map(t => t.year);
+  const finalsLosses = [...new Set([...runnerUpFromTrophy, ...runnerUpFromGames])]
+    .sort((a, b) => a - b);
+
+  // The game log records a runner-up for every season it covers, so the first
+  // logged season is the first a loser is knowable league-wide.
+  const knownFromCandidates = [...tables.years, ...runnerUpFromTrophy];
+  const lossesKnownFrom =
+    knownFromCandidates.length > 0 ? Math.min(...knownFromCandidates) : null;
+
+  const finals: FinalsRecord = {
+    wins: finalsWins,
+    losses: finalsLosses,
+    lossesKnownFrom,
+    lossesComplete:
+      lossesKnownFrom === null || firstSeason === null || firstSeason >= lossesKnownFrom,
+  };
+
   const trophies: TrophyWin[] = mine
     .map(t => ({
       trophyId: t.trophy_id,
@@ -157,6 +220,7 @@ export function buildHonors(
     championshipDisagreements: disagreements,
     groupTitles: groupTitles.filter(Boolean),
     playoffAppearances,
+    finals,
     championshipGameAppearances,
     pointsTitles,
     weeklyHighScores: weeklyHighTotal,
