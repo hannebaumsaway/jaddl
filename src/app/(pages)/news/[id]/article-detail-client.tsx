@@ -1,282 +1,194 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Tag, ArrowLeft, ZoomIn, Quote } from 'lucide-react';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 import { documentToReactComponents, Options } from '@contentful/rich-text-react-renderer';
 import { BLOCKS, INLINES } from '@contentful/rich-text-types';
+
 import { Lightbox, useLightbox } from '@/components/ui/lightbox';
+import { ArticleShell } from '@/components/article/article-shell';
+import { GameMarker, PullQuote } from '@/components/article/widgets';
+import type { WeekSlate } from '@/lib/articles/slate';
 import { ProcessedJaddlArticle } from '@/types/contentful';
-import Link from 'next/link';
+import s from '@/components/article/article.module.css';
 
 interface ArticleDetailClientProps {
   article: ProcessedJaddlArticle;
+  slate: WeekSlate | null;
+  /** Estimated reading time in minutes, computed on the server. */
+  readMinutes: number;
 }
 
-export function ArticleDetailClient({ article }: ArticleDetailClientProps) {
+/**
+ * `## Team A 174.9 | Team B 103.95` — the roundup heading the column has used
+ * since 2008. Parsing it means the score line in the prose is the same object
+ * as the score line in the rail, tagged and formatted identically, rather than
+ * whatever the writer typed that day.
+ */
+const GAME_HEADING = /^(.+?)\s+(-?\d+(?:\.\d+)?)\s*\|\s*(.+?)\s+(-?\d+(?:\.\d+)?)\s*$/;
+
+function headingText(node: any): string {
+  return (node.content || [])
+    .map((c: any) => (typeof c.value === 'string' ? c.value : ''))
+    .join('')
+    .trim();
+}
+
+export function ArticleDetailClient({ article, slate, readMinutes }: ArticleDetailClientProps) {
   const { isOpen, imageUrl, imageAlt, title, openLightbox, closeLightbox } = useLightbox();
 
-  // Rich text rendering options
+  /** The rail already decided which game is the week high / closest / blowout. */
+  const tagFor = (a: number, b: number): string | null => {
+    if (!slate) return null;
+    const hi = Math.max(a, b);
+    const lo = Math.min(a, b);
+    const hit = slate.games.find(
+      g => Math.abs(g.winner.score - hi) < 0.05 && Math.abs(g.loser.score - lo) < 0.05
+    );
+    return hit?.tag ?? null;
+  };
+
+  // The first paragraph carries the lede's larger size; everything after it is
+  // body copy. Counted rather than indexed, because an article may open with an
+  // embedded asset.
+  let paragraphsSeen = 0;
+
   const richTextOptions: Options = {
     renderNode: {
-      [BLOCKS.HEADING_1]: (node, children) => (
-        <h1 className="text-3xl font-bold text-foreground mt-8 mb-4 first:mt-0">
-          {children}
-        </h1>
-      ),
-      [BLOCKS.HEADING_2]: (node, children) => (
-        <h2 className="text-2xl font-bold text-foreground mt-6 mb-3 first:mt-0">
-          {children}
-        </h2>
-      ),
-      [BLOCKS.HEADING_3]: (node, children) => (
-        <h3 className="text-xl font-semibold text-foreground mt-5 mb-2 first:mt-0">
-          {children}
-        </h3>
-      ),
-      [BLOCKS.PARAGRAPH]: (node, children) => (
-        <p className="text-lg text-foreground leading-relaxed mb-4 font-serif">
-          {children}
-        </p>
-      ),
-      [BLOCKS.UL_LIST]: (node, children) => (
-        <ul className="list-disc list-inside text-foreground mb-4 space-y-1 font-serif">
-          {children}
-        </ul>
-      ),
-      [BLOCKS.OL_LIST]: (node, children) => (
-        <ol className="list-decimal list-inside text-foreground mb-4 space-y-1 font-serif">
-          {children}
-        </ol>
-      ),
-      [BLOCKS.LIST_ITEM]: (node, children) => (
-        <li className="text-lg text-foreground leading-relaxed font-serif">
-          {children}
-        </li>
-      ),
-      [BLOCKS.QUOTE]: (node, children) => (
-        <blockquote className="flex items-start gap-3 my-8 pl-4">
-          <Quote className="h-4 w-4 text-muted-foreground mt-3 flex-shrink-0 rotate-180" />
-          <div 
-            className="leading-relaxed [&_p]:!text-[1.7rem] [&_p]:!font-['IBM_Plex_Sans'] [&_p]:!text-muted-foreground [&_p]:!mb-0 [&_p]:!font-sans"
-            style={{
-              fontFamily: 'IBM Plex Sans, sans-serif',
-              fontSize: '1.7rem',
-              color: 'var(--muted-foreground)',
-            }}
-          >
-            {children}
-          </div>
-        </blockquote>
-      ),
+      [BLOCKS.HEADING_1]: (_node, children) => <h2>{children}</h2>,
+
+      [BLOCKS.HEADING_2]: (node, children) => {
+        const match = GAME_HEADING.exec(headingText(node));
+        if (match) {
+          const [, nameA, scoreA, nameB, scoreB] = match;
+          const a = Number(scoreA);
+          const b = Number(scoreB);
+          const aWon = a >= b;
+          return (
+            <GameMarker
+              winnerName={aWon ? nameA : nameB}
+              winnerScore={aWon ? a : b}
+              loserName={aWon ? nameB : nameA}
+              loserScore={aWon ? b : a}
+              isTie={a === b}
+              tag={tagFor(a, b)}
+            />
+          );
+        }
+        return <h2>{children}</h2>;
+      },
+
+      [BLOCKS.HEADING_3]: (_node, children) => <h3>{children}</h3>,
+
+      [BLOCKS.PARAGRAPH]: (_node, children) => {
+        paragraphsSeen += 1;
+        return <p className={paragraphsSeen === 1 ? s.lede : undefined}>{children}</p>;
+      },
+
+      [BLOCKS.QUOTE]: (_node, children) => <PullQuote>{children}</PullQuote>,
+
       [BLOCKS.EMBEDDED_ASSET]: (node) => {
         const asset = node.data.target;
         if (!asset?.fields?.file?.url) return null;
-        
-        const imageUrl = `https:${asset.fields.file.url}`;
+        const url = `https:${asset.fields.file.url}`;
         const alt = asset.fields.title || asset.fields.description || '';
-        
         return (
-          <div className="my-8">
-            <div 
-              className="relative w-full max-w-2xl mx-auto cursor-pointer group"
-              onClick={() => openLightbox(imageUrl, alt, asset.fields.title)}
+          <figure className={s.figure}>
+            <div
+              className="relative w-full aspect-[3/2] cursor-zoom-in overflow-hidden"
+              onClick={() => openLightbox(url, alt, asset.fields.title)}
             >
-              <div className="relative h-64 md:h-96 w-full overflow-hidden rounded-lg">
-                <Image
-                  src={imageUrl}
-                  alt={alt}
-                  fill
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
-                />
-                
-                {/* Hover overlay with zoom icon */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-3">
-                    <ZoomIn className="h-6 w-6 text-gray-800" />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Image caption */}
-              {asset.fields.title && (
-                <p className="text-sm text-muted-foreground mt-2 text-center font-serif">
-                  {asset.fields.title}
-                </p>
-              )}
+              <Image src={url} alt={alt} fill className="object-cover" sizes="(max-width: 900px) 100vw, 660px" />
             </div>
-          </div>
+            {asset.fields.title && (
+              <figcaption className={`${s.mono} ${s.figureCaption}`}>{asset.fields.title}</figcaption>
+            )}
+          </figure>
         );
       },
+
       [INLINES.ASSET_HYPERLINK]: (node) => {
         const asset = node.data.target;
         if (!asset?.fields?.file?.url) return null;
-        
-        const imageUrl = `https:${asset.fields.file.url}`;
+        const url = `https:${asset.fields.file.url}`;
         const alt = asset.fields.title || asset.fields.description || '';
-        
         return (
-          <span 
-            className="inline-block cursor-pointer"
-            onClick={() => openLightbox(imageUrl, alt, asset.fields.title)}
-          >
-            <Image
-              src={imageUrl}
-              alt={alt}
-              width={200}
-              height={150}
-              className="inline-block rounded border hover:opacity-80 transition-opacity"
-            />
+          <span className="inline-block cursor-zoom-in" onClick={() => openLightbox(url, alt, asset.fields.title)}>
+            <Image src={url} alt={alt} width={200} height={150} className="inline-block border" />
           </span>
         );
       },
     },
     renderMark: {
-      'bold': (text) => <strong className="font-semibold">{text}</strong>,
-      'italic': (text) => <em className="italic">{text}</em>,
-      'underline': (text) => <u className="underline">{text}</u>,
+      bold: text => <strong className="font-semibold">{text}</strong>,
+      italic: text => <em className="italic">{text}</em>,
+      underline: text => <u className="underline">{text}</u>,
     },
   };
 
-  const formatDate = (year: number, week: number) => {
-    if (week === 0) {
-      return `${year} - Preseason/Draft`;
-    }
-    return `${year} - Week ${week}`;
-  };
+  const weekLabel = article.week === 0
+    ? 'PRESEASON'
+    : article.isPlayoff
+    ? `ROUND ${article.week}`
+    : `WK ${String(article.week).padStart(2, '0')}`;
 
-  const getWeekTypeColor = (isPlayoff: boolean, week: number) => {
-    if (week === 0) return 'bg-blue-100 text-blue-800';
-    if (isPlayoff) return 'bg-purple-100 text-purple-800';
-    return 'bg-green-100 text-green-800';
-  };
+  const kicker = article.week === 0
+    ? 'PRESEASON'
+    : article.isPlayoff
+    ? `PLAYOFF ROUND ${article.week} RECAP`
+    : `WEEK ${article.week} ROUNDUP`;
 
-  const getWeekTypeLabel = (isPlayoff: boolean, week: number) => {
-    if (week === 0) return 'PRESEASON';
-    if (isPlayoff) return 'PLAYOFF';
-    return 'REGULAR SEASON';
-  };
-
-  const handleImageClick = () => {
-    if (article.featuredImage) {
-      openLightbox(
-        article.featuredImage.url,
-        article.featuredImage.alt || article.title,
-        article.title
-      );
-    }
-  };
+  const byline = [
+    'THE COMMISH',
+    `${article.year} SEASON`,
+    `${readMinutes} MIN`,
+    ...(slate ? [`${slate.games.length} GAMES`] : []),
+  ];
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Link href="/news">
-            <Button variant="ghost" className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to News
-            </Button>
-          </Link>
-        </div>
-
-        {/* Article Header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Badge 
-              variant="secondary" 
-              className={`text-xs font-normal font-mono ${getWeekTypeColor(article.isPlayoff, article.week)}`}
-            >
-              {getWeekTypeLabel(article.isPlayoff, article.week)}
-            </Badge>
-            <div className="flex items-center text-sm text-muted-foreground font-mono font-normal">
-              <Calendar className="h-4 w-4 mr-1" />
-              {formatDate(article.year, article.week)}
-            </div>
-          </div>
-
-          <h1 className="text-4xl font-bold text-foreground mb-4 leading-tight">
-            {article.title}
-          </h1>
-
-          {article.subtitle && (
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              {article.subtitle}
-            </p>
-          )}
-
-        </header>
-
-        <Separator className="mb-8" />
-
-        {/* Featured Image */}
+      <ArticleShell
+        title={article.title}
+        subtitle={article.subtitle}
+        kicker={kicker}
+        byline={byline}
+        contextLabel={`${weekLabel}  /  ${article.year}  /  ${article.isPlayoff ? 'POSTSEASON' : 'REGULAR SEASON'}`}
+        slate={slate}
+      >
         {article.featuredImage && (
-          <div className="mb-8">
-            <div className="relative h-80 md:h-[500px] w-full overflow-hidden rounded-lg group cursor-pointer" onClick={handleImageClick}>
+          <figure className={s.figure} style={{ marginTop: 0 }}>
+            <div
+              className="relative w-full aspect-[3/2] cursor-zoom-in overflow-hidden"
+              onClick={() =>
+                openLightbox(article.featuredImage!.url, article.featuredImage!.alt || article.title, article.title)
+              }
+            >
               <Image
                 src={article.featuredImage.url}
                 alt={article.featuredImage.alt || article.title}
                 fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
                 priority
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                className="object-cover"
+                sizes="(max-width: 900px) 100vw, 660px"
               />
-              
-              {/* Hover overlay with zoom icon */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-3">
-                  <ZoomIn className="h-6 w-6 text-gray-800" />
-                </div>
-              </div>
             </div>
-          </div>
+          </figure>
         )}
 
-        {/* Article Content */}
-        <article className="max-w-none">
-          {article.content && documentToReactComponents(article.content, richTextOptions)}
-        </article>
+        {article.content && documentToReactComponents(article.content, richTextOptions)}
 
-        {/* Tags */}
         {article.tags.length > 0 && (
-          <div className="mt-8 pt-6 border-t">
-            <div className="flex flex-wrap gap-2">
-              {article.tags.map((tag) => (
-                <Link key={tag} href={`/news?tag=${encodeURIComponent(tag)}`}>
-                  <Badge
-                    variant="outline"
-                    className="text-sm flex items-center gap-1 font-mono font-normal hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer [text-transform:lowercase!important]"
-                  >
-                    <Tag className="h-3 w-3" />
-                    {tag}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
+          <div className={s.tags}>
+            {article.tags.map(tag => (
+              <Link key={tag} href={`/news?tag=${encodeURIComponent(tag)}`} className={`${s.mono} ${s.tag}`}>
+                {tag.toLowerCase()}
+              </Link>
+            ))}
           </div>
         )}
+      </ArticleShell>
 
-        {/* Footer */}
-        <footer className="mt-12 pt-8 border-t">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground font-mono font-normal">
-              Published in {article.year} • Week {article.week === 0 ? 'Preseason/Draft' : article.week}
-            </div>
-            <Link href="/news">
-              <Button variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to News
-              </Button>
-            </Link>
-          </div>
-        </footer>
-      </div>
-
-      {/* Lightbox Modal */}
       <Lightbox
         isOpen={isOpen}
         onClose={closeLightbox}

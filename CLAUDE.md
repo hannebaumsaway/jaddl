@@ -22,6 +22,12 @@ pnpm brief ... --prompt                             # voice guide + brief, paste
 pnpm dossier --team "Hauloll"                       # everything known about one franchise
 pnpm dossier --team 10 --json                       # same, machine-readable
 pnpm dossier --verify                               # invariant checks across every team
+
+pnpm article --file /tmp/week2.md                    # dry run
+pnpm article --file /tmp/week2.md --create           # create a Contentful draft
+pnpm article --file ... --create --publish           # and make it live
+pnpm article --file ... --update <entryId>           # revise an existing one
+pnpm article --read <entryId>                        # back out as markdown
 ```
 
 There is no test framework. "Tests" are standalone Node scripts at the repo root that load `.env.local` via `dotenv` and talk to Supabase/Contentful directly:
@@ -359,7 +365,7 @@ every 2025 scoring average by 14/13.
 ### Routing and rendering
 
 - `src/app/(pages)/` — public site (home, news, scores, standings, teams, history, survivor). Mostly server components; the home page is `force-dynamic`, and `teams/page.tsx` plus the news client components are `'use client'`.
-- `src/app/(admin)/admin/` — score import and playoff export dashboards, all client components.
+- `src/app/(admin)/admin/` — score import and playoff export dashboards, all client components, plus `admin/preview/[id]`, which renders an **unpublished** article through the real article shell. It reads via the Contentful *preview* API and lives under `/admin` so `proxy.ts` gates it — unpublished copy is behind the admin session rather than merely at an unguessable URL.
 - `src/app/api/` — admin auth (`login`/`logout`/`verify`), `admin/import-scores`, `export-playoff-data`, `revalidate`, and the diagnostic `analyze-db` / `test-supabase` routes.
 - `src/proxy.ts` gates the admin surface (see below). Next 16 renamed the `middleware` convention to `proxy`; it runs on the **Node** runtime, which is not configurable.
 - `POST /api/revalidate?tag=…|path=…` handles ISR invalidation (Contentful webhook target). Authenticated with `REVALIDATE_SECRET` via the `x-revalidate-secret` header (preferred — query strings land in access logs) or a `secret` query param for existing webhook configs. Required on every call, compared with `safeEqual`, and fails closed when `REVALIDATE_SECRET` is unset.
@@ -405,6 +411,47 @@ insecure configuration look like a working one.
 
 SQL lives in `supabase-migrations/` and is applied **manually in the Supabase SQL Editor** — there is no migration runner. Add a numbered file and document it in `supabase-migrations/README.md`.
 
+## Article page
+
+`src/components/article/` renders a recap. One shell, two callers: the
+published Contentful article at `news/[id]` and the unpublished preview at
+`admin/preview/[id]`.
+
+- `article-shell.tsx` — context bar, inverted hero, and the grid that puts the
+  week's scores in a right rail. The article is first in the DOM at every width;
+  `grid-template-areas` moves the rail above it on phones.
+- `week-slate.tsx` — the rail. **Its scores come from Supabase via
+  `loadWeekSlate`, never from the prose**, so a recap cannot disagree with the
+  scoreboard beside it after a score correction. It also decides which game is
+  the week high / biggest margin / closest, and the in-flow game marker reuses
+  that tag rather than recomputing it.
+- `widgets.tsx` — `GameMarker`, `PlayerLine`, `SeriesArc`, `HonorsStrip`,
+  `PullQuote`. Deliberately unequal in weight: the game marker is a rule across
+  the column, the player line is an annotation hanging off it. Only `GameMarker`
+  has a path to the page today; the rest wait on article generation (see
+  **Article pipeline**).
+- `article-body.tsx` — prose from parsed markdown blocks, used by the preview.
+  The published page renders the rich text directly, but both produce the same
+  elements.
+- `article.module.css` — a CSS module, not utilities; colour comes from the
+  site's own tokens so dark mode arrives through next-themes. The hero is dark
+  in **both** themes, since inverting it would put a white slab on a dark page.
+
+Two things worth knowing before changing any of it:
+
+- **The mobile rail disclosure is a checkbox and a label, not `<details>`.**
+  `<details>` measured open when it should have been closed, and engines hide
+  its closed content by mechanisms that do not reliably yield to CSS. The
+  replacement is one selector and no JavaScript.
+- **`formatScore` in `src/lib/articles/format.ts`, not `toFixed(2)`.** `games`
+  stores one decimal, so padding a stored 104.0 to "104.00" invents a digit.
+  Sleeper does carry two (103.95), which is why an article's own numbers can be
+  *more* precise than the rail beside them.
+
+`## Team A 174.9 | Team B 103.95` — the roundup heading the column has used
+since 2008 — is parsed into a `GameMarker` on both surfaces. A heading that
+does not match renders as an ordinary `h2`, so single-game essays are unaffected.
+
 ## Article pipeline
 
 Weekly recaps are written from a generated **brief**, not from raw data. The
@@ -432,10 +479,29 @@ a result was unusual will invent things; one handed a brief will not.
 - `ARTICLE_VOICE.md` — how to write. Kept out of the brief on purpose: the brief
   is evidence, and baking instructions into it would fix one tone for every
   consumer.
-- `drafts/` — pre-publication working copies, with frontmatter mirroring the
-  `jaddlArticle` fields. Deliberately **not** under `public/`, which Next serves
-  at the site root; a draft at `www.jaddl.com/articles/…` helps nobody.
-  Contentful remains the published source of truth. See `drafts/README.md`.
+- **Articles live in Contentful and nowhere else.** There is no `drafts/`
+  directory; there was one, and two copies drifted within minutes — a title
+  edited in the Contentful editor left the local file wrong. A piece is created
+  as a Contentful *draft* from the moment it exists, read at
+  `/admin/preview/[id]`, and published when Ryan says so. Markdown is a
+  transport format between the conversation and the entry, not a stored copy, so
+  `--file` takes a path anywhere (a scratch file is the point).
+- `create-article.ts` (`pnpm article`) — markdown into a `jaddlArticle`, and back
+  out again. **Dry by default**: `--create` writes an unpublished entry,
+  `--publish` makes it live, `--update <id>` revises one, and it refuses to
+  create a second article for a year/week that already has one without
+  `--force`. `--read <id>` returns the entry as markdown with frontmatter — that
+  is the revision path, and it is why `from-rich-text.ts` exists.
+- `src/lib/articles/markdown.ts` → `rich-text.ts` → `from-rich-text.ts` — one
+  parse in each direction, verified lossless on a real article: stored document
+  → markdown → blocks → document is byte-identical after key normalisation, and
+  the markdown is a fixed point. A game heading round-trips as a `heading-2`
+  rather than as structured data, which keeps the entry editable as an article
+  in Contentful and keeps markers working on one edited there by hand.
+- `CONTENTFUL_MANAGEMENT_TOKEN` is a **personal access token**: it reaches every
+  space and content type on the account, and this space also holds a portfolio
+  site. Every query and write is scoped to `jaddlArticle` by convention, not by
+  anything the token enforces — keep it that way.
 
 ### Decisions that are still standing
 

@@ -15,7 +15,8 @@
     "add-tags": "node add-tags-to-articles.js",
     "sync-players": "node sync-players.mjs",
     "brief": "tsx --env-file=.env.local build-brief.ts",
-    "dossier": "tsx --env-file=.env.local build-dossier.ts"
+    "dossier": "tsx --env-file=.env.local build-dossier.ts",
+    "article": "tsx --env-file=.env.local create-article.ts"
   },
   "dependencies": {
     "@contentful/rich-text-react-renderer": "^15.19.0",
