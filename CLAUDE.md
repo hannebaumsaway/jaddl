@@ -214,10 +214,19 @@ per-team statistics — identity, career and season records, honors, luck,
 head-to-head, superlatives and draft slots. It runs one `loadLeagueHistory()`
 plus a few team-scoped lookups and derives the rest in memory.
 
-It exists because `teams/[id]/page.tsx` derives all of this inline and gets
-several wrong: its career record counts playoff games and the 2025 play-in, so
-it disagrees with the standings page for the same team. **The page has not been
-migrated yet** — that is the next piece of work.
+It exists because `teams/[id]/page.tsx` used to derive all of this inline and
+got several wrong — its career record counted playoff games and the 2025
+play-in, so it disagreed with the standings page for the same team. **The page
+is now fully on the dossier** (`Rebuild the team page against the dossier`):
+`src/components/team/panels.tsx` imports nothing but the `TeamDossier` type and
+holds no queries or game math of its own, and the page's only non-dossier calls
+are `getTeamProfiles()`/`getTeams()`, which feed the franchise switcher rather
+than any statistic. `pnpm dossier --verify` asserts the agreement with
+`calculateStandings`.
+
+**Anything new on this page goes through the dossier.** A panel that reaches
+for Supabase directly reintroduces exactly the split that made the two pages
+disagree; add the derivation to `src/lib/teams/` and let the page read it.
 
 Sourcing rules, each because the obvious source is wrong:
 
