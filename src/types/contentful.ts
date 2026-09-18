@@ -153,6 +153,13 @@ export interface ProcessedTeamProfile {
     width?: number;
     height?: number;
   };
+  /** Cut-out uniform mockup — a player wearing this franchise's kit. */
+  uniformMockup?: {
+    url: string;
+    alt: string;
+    width?: number;
+    height?: number;
+  };
   yearEstablished?: number;
   active?: boolean;
 }

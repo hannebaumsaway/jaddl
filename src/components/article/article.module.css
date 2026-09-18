@@ -1,0 +1,429 @@
+/*
+ * Article detail page.
+ *
+ * A CSS module rather than utility classes: this layout is typographic —
+ * fluid clamps, optical letter-spacing, a sticky rail and a no-JS disclosure —
+ * and those read better as declarations than as a wall of arbitrary values.
+ *
+ * Colour comes from the site's own tokens so dark mode arrives through
+ * next-themes' `.dark` class and nothing here has to know about it. The one
+ * exception is the hero, which is dark in BOTH themes: inverting it in dark
+ * mode would put a white slab at the top of a dark page.
+ */
+
+.page {
+  --hero-bg: #0c0c0c;
+  --hero-ink: #ffffff;
+  --hero-muted: #a8a8a2;
+  --hero-line: #2a2a26;
+  --gut: 1rem;
+}
+
+:global(.dark) .page {
+  --hero-bg: #000000;
+  --hero-ink: #f2f2ee;
+  --hero-muted: #8e8e88;
+  --hero-line: #232320;
+}
+
+.wrap {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 0 var(--gut);
+}
+
+.mono {
+  font-family: var(--font-mono, 'IBM Plex Mono'), ui-monospace, monospace;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ---------------------------------------------------------- context bar */
+/* Not a masthead — the site header already carries the wordmark. This is the
+   one line of provenance a recap needs: which week you are reading. */
+.contextBar {
+  background: var(--hero-bg);
+  color: var(--hero-ink);
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+.contextBar .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.contextBack {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--hero-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.contextBack:hover { color: var(--hero-ink); }
+.contextWeek {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--hero-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------ hero */
+.hero {
+  background: var(--hero-bg);
+  color: var(--hero-ink);
+  padding: 34px 0 40px;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.kickerDot {
+  width: 8px;
+  height: 8px;
+  background: var(--hero-ink);
+  flex: 0 0 auto;
+}
+.kicker span {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--hero-muted);
+}
+.title {
+  font-family: var(--font-serif, 'IBM Plex Serif'), ui-serif, Georgia, serif;
+  font-size: clamp(38px, 7.2vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-weight: 400;
+  margin: 0;
+  text-wrap: balance;
+  max-width: 14ch;
+}
+.subtitle {
+  font-size: clamp(17px, 2.6vw, 21px);
+  line-height: 1.42;
+  color: var(--hero-muted);
+  font-weight: 300;
+  margin: 18px 0 0;
+  max-width: 34em;
+}
+.byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hero-line);
+}
+.byline span {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--hero-muted);
+}
+
+/* ------------------------------------------------------- two-column body */
+/* The week's six scores live in the rail, not the flow. They are reference
+   material a reader glances at while reading, not narrative beats; six boxed
+   scoreboards interrupting the prose read as furniture. */
+.layout {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 0 var(--gut);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 272px;
+  gap: 0 52px;
+  grid-template-areas: 'body rail';
+}
+.body {
+  grid-area: body;
+  min-width: 0;
+  max-width: 660px;
+  padding: 38px 0 16px;
+  font-size: 17px;
+  line-height: 1.62;
+}
+.rail { grid-area: rail; min-width: 0; padding-top: 38px; }
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'rail' 'body';
+    gap: 0;
+  }
+  .rail { padding-top: 24px; margin-bottom: 10px; }
+  .body { padding-top: 10px; }
+}
+
+.body p { margin: 0 0 20px; }
+.lede {
+  font-size: clamp(20px, 3vw, 24px);
+  line-height: 1.36;
+  letter-spacing: -0.005em;
+}
+.body h2, .body h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 34px 0 14px;
+}
+.body h2 { font-size: 22px; }
+.body h3 { font-size: 18px; }
+.body ul, .body ol { margin: 0 0 20px; padding-left: 1.2em; }
+.body li { margin-bottom: 6px; }
+.body a { text-decoration: underline; text-underline-offset: 3px; }
+.figure { margin: 30px 0; }
+.figureCaption {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+  margin-top: 8px;
+}
+
+/* ------------------------------------------------------ the slate (rail) */
+.slate {
+  border-top: 2px solid var(--foreground);
+  padding-top: 10px;
+  position: sticky;
+  top: 18px;
+}
+/*
+ * Collapsed by default on phones: six games ahead of the lede means scrolling
+ * past the whole slate to reach the first sentence. The summary keeps the
+ * glance-level numbers, so a shut panel is not a dead one.
+ *
+ * A checkbox and a label, not <details>. <details> was measured open when it
+ * should have been closed, and engines hide its closed content by mechanisms
+ * that do not reliably yield to CSS. This is one selector and no JavaScript.
+ */
+.slateToggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.slateSummary {
+  display: none;
+  cursor: pointer;
+  user-select: none;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 10px;
+  min-height: 44px;
+}
+.slateToggle:focus-visible + .slateSummary {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+.sumLabel { flex: 0 0 auto; white-space: nowrap; font-size: 10px; letter-spacing: 0.16em; }
+.sumNums {
+  flex: 1 1 auto;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.slateSummary::after {
+  content: '+';
+  font-family: var(--font-mono, 'IBM Plex Mono'), ui-monospace, monospace;
+  font-size: 16px;
+  color: var(--muted-foreground);
+  flex: 0 0 auto;
+  line-height: 1;
+}
+.slateToggle:checked + .slateSummary::after { content: '\2212'; }
+.slateToggle:checked + .slateSummary {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+  .slate { position: static; }
+  .slateSummary { display: flex; }
+  .slateBody .slateHead { display: none; }
+  .slateToggle:not(:checked) ~ .slateBody { display: none; }
+}
+
+.slateHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.slateHeadLabel { font-size: 10px; letter-spacing: 0.16em; }
+.slateHeadNum { font-size: 10px; letter-spacing: 0.06em; color: var(--muted-foreground); }
+
+.slateGame { padding: 9px 0; border-top: 1px solid var(--border); }
+.slateGame:first-of-type { border-top: 0; }
+.slateRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.slateName {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slateValue { font-size: 13px; font-weight: 500; }
+.slateLose .slateName, .slateLose .slateValue { color: var(--muted-foreground); font-weight: 400; }
+.slateTag {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+  margin-top: 3px;
+  display: block;
+}
+.slateFoot {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.slateFoot span { font-size: 10px; letter-spacing: 0.06em; color: var(--muted-foreground); }
+
+/* --------------------------------------------- game marker (in the flow) */
+/* A rule and a line of type, not a box. The scores themselves are in the rail;
+   this only marks where one game's write-up starts. */
+.gameMarker {
+  margin: 38px 0 22px;
+  padding-top: 9px;
+  border-top: 2px solid var(--foreground);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.gameMarkerTeams { font-size: 19px; font-weight: 500; letter-spacing: -0.01em; }
+.gameMarkerLose { color: var(--muted-foreground); font-weight: 400; }
+.gameMarkerMeta {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- player line */
+/* Deliberately subordinate to the game marker: no box, no large numeral,
+   indented off the text column so it reads as a note on the prose rather than
+   a peer of the scoreboard. */
+.playerLine {
+  border-left: 2px solid var(--border);
+  margin: 22px 0 22px 2px;
+  padding: 2px 0 2px 14px;
+}
+.playerTop { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.playerPts { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.playerPtsBad { color: #9b3a2e; }
+:global(.dark) .playerPtsBad { color: #d08574; }
+.playerName { font-size: 15px; font-weight: 500; }
+.playerMeta { font-size: 11px; letter-spacing: 0.06em; color: var(--muted-foreground); }
+.playerStat { font-size: 13px; color: var(--muted-foreground); margin-top: 3px; }
+.playerNote { font-size: 14px; line-height: 1.5; color: var(--muted-foreground); margin-top: 5px; }
+.playerNote strong { color: var(--foreground); font-weight: 500; }
+
+/* ----------------------------------------------------------- series arc */
+.arc {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 30px 0;
+  padding: 14px 0;
+}
+.arcHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.arcLabel { font-size: 11px; letter-spacing: 0.14em; color: var(--muted-foreground); }
+.arcValue { font-size: 13px; font-weight: 500; }
+.arc svg { display: block; width: 100%; height: 78px; overflow: visible; margin-top: 10px; }
+.arcFoot { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.arcFoot span { font-size: 11px; color: var(--muted-foreground); }
+
+/* -------------------------------------------------------- honors strip */
+.honors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 26px;
+  border-top: 1px solid var(--border);
+  margin: 26px 0;
+  padding-top: 12px;
+}
+.honorsNum { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+.honorsZero { color: var(--muted-foreground); opacity: 0.6; }
+.honorsLabel { font-size: 10px; letter-spacing: 0.1em; color: var(--muted-foreground); margin-top: 2px; }
+
+/* ----------------------------------------------------------- pull quote */
+.pull {
+  border-top: 1px solid var(--foreground);
+  border-bottom: 1px solid var(--foreground);
+  padding: 18px 0;
+  margin: 34px 0;
+}
+.pull p {
+  margin: 0;
+  font-family: var(--font-serif, 'IBM Plex Serif'), ui-serif, Georgia, serif;
+  font-size: clamp(19px, 2.8vw, 23px);
+  line-height: 1.34;
+}
+
+/* -------------------------------------------------------------- footer */
+.tags { margin: 34px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+/* Overrides the underline `.body a` gives prose links: these are chips with a
+   border of their own, so the rule reads as clutter rather than affordance.
+   Same specificity as `.body a`, later in the file, so source order decides. */
+.tags a { text-decoration: none; }
+.tag {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  padding: 3px 9px;
+  text-decoration: none;
+}
+.tag:hover { color: var(--foreground); border-color: var(--foreground); }
+
+.articleFoot {
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+  padding: 22px 0 44px;
+}
+.articleFoot .wrap {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.articleFoot span, .articleFoot a {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.articleFoot a:hover { color: var(--foreground); }
+
+/* Section break in a draft: a short centred rule, not a full-width divider. */
+.draftRule {
+  border: 0;
+  border-top: 1px solid var(--border);
+  width: 80px;
+  margin: 34px auto;
+}

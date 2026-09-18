@@ -89,7 +89,12 @@ Quotes attributed to real NFL players must be real or omitted.
 
 Use the league's own vocabulary. It is in the database:
 
-- **Jared's Goblet** — the championship. The final is the **Jared Bowl**.
+- **Court-Ordered Limousine** — the championship trophy. The title game itself
+  is the **Jared Bowl**; losing it earns the **Surrendered Keys**.
+- **Jared's Goblet** is a *division/quad* title, not the championship — 40 rows
+  against the Limousine's 23. The 2015 piece calling IPA "Two Jared's Goblets"
+  means two West titles, not two championships. Getting this backwards is easy
+  and very visible: Lannie has five Goblets and zero Limousines.
 - Divisions and quads have names with personality — Winterfell, The Holy
   Trinity, The Abusement Park, Flavortown, Old School East. Refer to them by
   name, and treat a bad one as a character: *"how fucking bad is the Holy
@@ -97,7 +102,10 @@ Use the league's own vocabulary. It is in the database:
 - Teams get nicknames and remembered former names: "the 'Shanks", "Cammy Cam",
   "IPA Connoisseur—then known as the IPA Guzzlers; a much grosser, less
   inspiring name."
-- Owners by first name, freely and directly.
+- Owners by first name, freely and directly. `team_bios.owner` holds the formal
+  name; some go by a nickname and both are fair game — Peter is Pete, Nathan is
+  Nate (his team is literally *Nate's Dinos or Whoever*). Lannie is already the
+  nickname. Use whichever reads better in the sentence.
 
 ## Devices
 
@@ -134,8 +142,23 @@ corpus and read as pastiche:
 - **Do not invent league history.** The archive-mining voice above is only
   credible because the numbers are right. If a cohort stat would land and the
   brief does not have it, write `[CHECK: …]` and leave it for a human.
+- **The brief gives a series' standing, never its shape.** It reports the record
+  before and after, and nothing about how the series got there. "Has never led
+  this series" and "has won six straight in it" are not in the brief and must be
+  computed from the game log before being written. A draft claimed Ryan had
+  "never once been ahead" of James; he won the first six meetings and led as
+  recently as 2022.
 - The brief's `angles` are candidate storylines, not sentences. Take one or two.
   Never list them.
+- **Apply sports judgment before repeating an angle.** `bench-regret` in
+  particular is computed mechanically — it fires whenever a benched player
+  outscored a starter by more than the margin, and it cannot tell a genuine
+  lineup blunder from ordinary bad luck. In 2026 Week 1 it flagged Ian for
+  starting Kyler Murray over Jacoby Brissett; every owner alive starts Murray
+  there, and what actually happened is that Murray got pulled after five throws
+  for Carson Wentz. Writing that up as a mistake makes the column look like it
+  does not watch football. Ask whether the alternative was genuinely startable
+  *before kickoff*; if it was not, the story is luck, not error.
 - A multiplier of 2.0x+ is a genuine outlier, ~1.0x is a normal week, under 0.5x
   is why someone lost, and `—` means no baseline — say nothing about that
   player's form.
@@ -144,9 +167,15 @@ corpus and read as pastiche:
 ## Real-world NFL context
 
 The older pieces use real NFL detail freely — Eddie Lacy scoring 0.3, Marshawn
-Lynch's goose egg, Rodgers having "a really bad day." **The brief has none of
-it.** It knows a player's score, never how they got it.
+Lynch's goose egg, Rodgers having "a really bad day."
 
-Use real NFL detail only where it is genuinely known. An invented NFL narrative
-is checkable by every reader and is the one error that would discredit the
-archive-mining the rest of the voice depends on.
+**The brief now carries this**, from ESPN box scores, for 2023 onward. Each
+starter shows a real stat line, the game it came from, and any derived notes:
+a quarterback pulled early, a receiver with four targets, a defense that
+conceded 36 with two sacks. Use it freely — that is what it is for.
+
+Still never invent NFL narrative. If the brief does not have it, it is not
+known: anything after a model's training cutoff is fabrication, and an invented
+NFL detail is checkable by every reader, which would discredit the
+archive-mining the rest of the voice depends on. Pre-2023 briefs carry no NFL
+context at all and say so.

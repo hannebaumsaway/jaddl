@@ -15,6 +15,10 @@
 
 import { supabase } from '../supabase/client';
 import { getPlayers, type NflPlayer } from '../sleeper/players';
+import {
+  loadNflWeek, findPlayer, statLine, gameLine, playerNotes, defenseNotes,
+  type NflWeek,
+} from '../nfl/espn';
 import { getPlayoffRoundLabel, getSeasonConfig, countsTowardRecord, type SeasonConfig } from '../supabase/api';
 import {
   loadLeagueHistory,
@@ -56,6 +60,11 @@ export interface BriefPlayerLine {
   position: string | null;
   nflTeam: string | null;
   points: number;
+  /**
+   * What actually happened on the field. Null when the NFL week could not be
+   * loaded or the player did not match a box score — never guessed.
+   */
+  real: { statLine: string | null; game: string; notes: string[] } | null;
   /** This player's mean starter score across the season, or null if unknown. */
   seasonAverage: number | null;
   /** points / seasonAverage; >1 is an overperformance. Null when no average. */
@@ -119,6 +128,8 @@ export interface GameBrief {
     marginRankInWeek: number;
   };
   lineups: { winner: BriefLineup; loser: BriefLineup } | null;
+  /** True when real NFL box scores were attached to the lineups. */
+  nflContextAvailable: boolean;
   /** Sleeper display names, when a lineup matched. Articles name owners. */
   owners: { winner: string | null; loser: string | null };
   history: {
@@ -468,12 +479,20 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
           const wM = [Math.abs(x.points - winnerScore) <= TOL ? x : y];
           const lM = [wM[0] === x ? y : x];
           const seasonAverages = await computeSeasonAverages(seasonLeagueId, week, week);
+
+          // JADDL week N is NFL week N. A failure here must not fail the brief:
+          // league facts are the point, real-world colour is enrichment.
+          let nflWeek: NflWeek | null = null;
+          if (!isPlayoff) {
+            try { nflWeek = await loadNflWeek(year, week); }
+            catch { nflWeek = null; }
+          }
           const ids = [...new Set([...wM[0].starters, ...lM[0].starters,
                                    ...wM[0].players, ...lM[0].players])];
           const players = await getPlayers(ids);
           lineups = {
-            winner: toLineup(winnerId, wM[0], players, seasonAverages),
-            loser: toLineup(loserId, lM[0], players, seasonAverages),
+            winner: toLineup(winnerId, wM[0], players, seasonAverages, nflWeek),
+            loser: toLineup(loserId, lM[0], players, seasonAverages, nflWeek),
           };
           // Sleeper carries two decimals where Supabase rounds to one; the
           // finer figure is what actually got published in past articles.
@@ -586,6 +605,8 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
       marginRankInWeek: weekMargins.findIndex(m => Math.abs(m - margin) < 0.005) + 1,
     },
     lineups,
+    nflContextAvailable: !!lineups &&
+      [...lineups.winner.starters, ...lineups.loser.starters].some(p => p.real !== null),
     owners,
     history: historyBlock,
     clinch,
@@ -600,16 +621,34 @@ function toLineup(
   teamId: number,
   m: SleeperMatchupRaw,
   players: Map<string, NflPlayer>,
-  averages: Map<string, number>
+  averages: Map<string, number>,
+  nflWeek: NflWeek | null
 ): BriefLineup {
   const line = (id: string, points: number): BriefPlayerLine => {
     const p = players.get(id);
     const avg = averages.get(id) ?? null;
+
+    // Real-world context, attached only on a confident match. A team defense
+    // has no box-score line of its own, so it is described from what the
+    // opposing offense managed.
+    let real: BriefPlayerLine['real'] = null;
+    if (nflWeek && p?.nfl_team) {
+      if (p.position === 'DEF') {
+        const g = nflWeek.games.find(x => x.teams.some(t => t.abbr === p.nfl_team || t.abbr === 'WSH'));
+        const notes = defenseNotes(nflWeek, p.nfl_team);
+        if (notes.length) real = { statLine: null, game: g ? gameLine(g) : '', notes };
+      } else {
+        const hit = findPlayer(nflWeek, p.full_name, p.nfl_team);
+        if (hit) real = { statLine: statLine(hit), game: gameLine(hit.game), notes: playerNotes(hit) };
+      }
+    }
+
     return {
       name: p?.full_name ?? `(unresolved ${id})`,
       position: p?.position ?? null,
       nflTeam: p?.nfl_team ?? null,
       points: round1(points),
+      real,
       seasonAverage: avg === null ? null : round1(avg),
       vsAverage: avg && avg > 0 ? Math.round((points / avg) * 100) / 100 : null,
     };

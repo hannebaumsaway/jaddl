@@ -162,6 +162,7 @@ function processTeamProfile(entry: any): ProcessedTeamProfile {
     teamName: fields.teamName,
     shortName: fields.shortName,
     logo: processAsset(fields.logo),
+    uniformMockup: processAsset(fields.uniformMockup),
     yearEstablished: fields.yearEstablished,
     active: fields.active ?? true, // Default to true if not specified
   };
@@ -318,7 +319,9 @@ export async function getJaddlArticles(
   tags?: string[],
   searchQuery?: string,
   isPlayoff?: boolean,
-  preview = false
+  preview = false,
+  /** Contentful entry id of a jaddlTeam, to return only articles featuring it. */
+  featuredTeamEntryId?: string
 ): Promise<ProcessedJaddlArticle[]> {
   try {
     const client = getContentfulClient(preview);
@@ -346,6 +349,10 @@ export async function getJaddlArticles(
     if (searchQuery) {
       query['query'] = searchQuery;
     }
+    // featuredTeams is a reference field, so it filters on the linked entry id.
+    if (featuredTeamEntryId) {
+      query['fields.featuredTeams.sys.id'] = featuredTeamEntryId;
+    }
 
     const response = await client.getEntries(query);
     return response.items.map(processJaddlArticle);
@@ -353,6 +360,23 @@ export async function getJaddlArticles(
     console.error('Error fetching JADDL articles:', error);
     return [];
   }
+}
+
+/**
+ * Articles featuring a team, by its Supabase team_id.
+ *
+ * The article's `featuredTeams` is a reference to a jaddlTeam entry, so the
+ * numeric team_id has to be resolved to a Contentful entry id first.
+ */
+export async function getJaddlArticlesForTeam(
+  teamId: number,
+  limit = 20,
+  preview = false
+): Promise<ProcessedJaddlArticle[]> {
+  const profiles = await getTeamProfiles(preview);
+  const profile = profiles.find(p => p.teamId === teamId);
+  if (!profile) return [];
+  return getJaddlArticles(limit, 0, undefined, undefined, undefined, undefined, undefined, preview, profile.id);
 }
 
 export async function getJaddlArticleById(

@@ -15,24 +15,23 @@ import type {
   TeamBio,
   FranchiseHistory,
   Draft,
-  Article,
   PlayoffSeedResult,
   PlayoffSeedRow,
   PlayoffPods
 } from '@/types/database';
 
 // Teams
-export async function getTeams(activeOnly = true): Promise<Team[]> {
+/**
+ * Every franchise ever, active or not. `teams` holds only team_id and
+ * team_name — there is no `active` column, so active/inactive is a Contentful
+ * question (`jaddlTeam.active`), not a Supabase one.
+ */
+export async function getTeams(): Promise<Team[]> {
   try {
-    let query = supabase
+    const query = supabase
       .from('teams')
       .select('*')
-      .order('team_id'); // Use team_id which is the actual primary key
-
-    // Note: active column may not exist, so skip the filter for now
-    // if (activeOnly) {
-    //   query = query.eq('active', true);
-    // }
+      .order('team_id'); // team_id is the primary key, not `id`
 
     const { data, error } = await (query as any);
 
@@ -227,8 +226,8 @@ export async function getTeamsByIds(ids: number[]): Promise<Team[]> {
     const { data, error } = await supabase
       .from('teams')
       .select('*')
-      .in('id', ids)
-      .order('name');
+      .in('team_id', ids)
+      .order('team_name');
 
     if (error) {
       handleSupabaseError(error, 'getTeamsByIds');
@@ -1382,16 +1381,17 @@ export async function getTrophyCase(
 }
 
 // Team Bios
-export async function getTeamBio(teamId: number, seasonYear: number): Promise<TeamBio | null> {
+/**
+ * The franchise's owner, location and first year. One row per team — this used
+ * to take a `seasonYear` and filter on a `season_year` column that does not
+ * exist, so it errored and returned null for every team.
+ */
+export async function getTeamBio(teamId: number): Promise<TeamBio | null> {
   try {
     const { data, error } = await supabase
       .from('team_bios')
-      .select(`
-        *,
-        team:team_id(*)
-      `)
+      .select('*')
       .eq('team_id', teamId)
-      .eq('season_year', seasonYear)
       .single();
 
     if (error) {
@@ -1407,15 +1407,21 @@ export async function getTeamBio(teamId: number, seasonYear: number): Promise<Te
 }
 
 // Franchise History
+/**
+ * A franchise's former names, oldest first. This is a name lineage, not a
+ * change log — it previously ordered by a `change_date` column that does not
+ * exist, so every call errored.
+ *
+ * Rows may repeat the team's current name; callers presenting these as
+ * *former* names should dedupe against `teams.team_name`.
+ */
 export async function getFranchiseHistory(teamId?: number): Promise<FranchiseHistory[]> {
   try {
     let query = supabase
       .from('franchise_history')
-      .select(`
-        *,
-        team:team_id(*)
-      `)
-      .order('change_date', { ascending: false });
+      .select('*')
+      .order('team_id')
+      .order('franchise_order');
 
     if (teamId) {
       query = (query as any).eq('team_id', teamId);
@@ -1435,22 +1441,25 @@ export async function getFranchiseHistory(teamId?: number): Promise<FranchiseHis
 }
 
 // Draft History
+/**
+ * Draft ORDER — which slot a team held in a given year. No players, rounds or
+ * positions are recorded, and the table stops after 2020.
+ *
+ * Previously filtered and ordered on `season_year`, which does not exist here.
+ */
 export async function getDraftHistory(
-  seasonYear?: number,
+  year?: number,
   teamId?: number
 ): Promise<Draft[]> {
   try {
     let query = supabase
       .from('drafts')
-      .select(`
-        *,
-        team:team_id(*)
-      `)
-      .order('season_year', { ascending: false })
+      .select('*')
+      .order('year', { ascending: false })
       .order('pick', { ascending: true });
 
-    if (seasonYear) {
-      query = (query as any).eq('season_year', seasonYear);
+    if (year) {
+      query = (query as any).eq('year', year);
     }
 
     if (teamId) {
@@ -1466,39 +1475,6 @@ export async function getDraftHistory(
     return data || [];
   } catch (error) {
     handleSupabaseError(error, 'getDraftHistory');
-    return [];
-  }
-}
-
-// Articles
-export async function getArticles(
-  featuredTeamId?: number,
-  limit = 10,
-  offset = 0
-): Promise<Article[]> {
-  try {
-    let query = supabase
-      .from('articles')
-      .select(`
-        *,
-        featured_team:featured_team_id(*)
-      `)
-      .order('published_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (featuredTeamId) {
-      query = (query as any).eq('featured_team_id', featuredTeamId);
-    }
-
-    const { data, error } = await (query as any);
-
-    if (error) {
-      handleSupabaseError(error, 'getArticles');
-    }
-
-    return data || [];
-  } catch (error) {
-    handleSupabaseError(error, 'getArticles');
     return [];
   }
 }

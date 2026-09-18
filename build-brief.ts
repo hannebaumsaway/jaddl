@@ -85,8 +85,17 @@ function render(b: GameBrief): string {
       rule(`${label} LINEUP — ${side.name}`);
       for (const p of lu.starters) {
         L.push(`  ${String(p.points).padStart(6)}  ${pct(p.vsAverage)}  ${p.name} (${p.position ?? '?'}, ${p.nflTeam ?? 'FA'})`);
+        // What actually happened on the field, indented under the fantasy score.
+        if (p.real?.statLine) L.push(`                     ${p.real.statLine}   [${p.real.game}]`);
+        else if (p.real) L.push(`                     [${p.real.game}]`);
+        for (const n of p.real?.notes ?? []) L.push(`                     ${n}`);
       }
       L.push(`  bench: ${lu.benchPoints}` + (lu.topBenched ? `   best benched: ${lu.topBenched.name} ${lu.topBenched.points}` : ''));
+    }
+    if (!b.nflContextAvailable) {
+      L.push('');
+      L.push('  (no NFL box scores attached — anything about what happened on');
+      L.push('   the field must be checked against a real source before use)');
     }
   } else {
     rule('LINEUPS');

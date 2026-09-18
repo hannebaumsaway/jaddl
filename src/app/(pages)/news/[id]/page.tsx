@@ -2,7 +2,15 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getJaddlArticleById, getJaddlArticleBySlug } from '@/lib/contentful/api';
+import { loadWeekSlate } from '@/lib/articles/slate';
 import { ArticleDetailClient } from './article-detail-client';
+
+/** Every string in a Contentful rich-text document, for a word count. */
+function richTextToPlain(node: any): string {
+  if (!node) return '';
+  if (typeof node.value === 'string') return node.value;
+  return (node.content || []).map(richTextToPlain).join(' ');
+}
 
 interface ArticlePageProps {
   params: Promise<{
@@ -83,5 +91,12 @@ export default async function ArticlePage(props: ArticlePageProps) {
     notFound();
   }
 
-  return <ArticleDetailClient article={article} />;
+  // The rail's scores come from Supabase, never from the prose, so a recap
+  // cannot disagree with the scoreboard beside it after a score correction.
+  const slate = await loadWeekSlate(article.year, article.week, article.isPlayoff);
+
+  const words = richTextToPlain(article.content).trim().split(/\s+/).filter(Boolean).length;
+  const readMinutes = Math.max(1, Math.round(words / 230));
+
+  return <ArticleDetailClient article={article} slate={slate} readMinutes={readMinutes} />;
 }
