@@ -47,9 +47,62 @@ export interface NflTeamSide {
   winner: boolean;
 }
 
+/**
+ * Which window of the NFL week a game kicked off in, in playing order.
+ *
+ * The ordering is what matters: a fantasy matchup is decided in this sequence,
+ * so knowing that a starter is still to play on Monday is the difference
+ * between a lead and a lead that is already gone. See `kickoffSlot`.
+ */
+export type NflSlot = 'THU' | 'SUN_EARLY' | 'SUN_LATE' | 'SNF' | 'MNF' | 'OTHER';
+
+/** Playing order, for comparing two slots. */
+export const SLOT_ORDER: NflSlot[] = ['THU', 'SUN_EARLY', 'SUN_LATE', 'SNF', 'MNF', 'OTHER'];
+
+export const SLOT_LABEL: Record<NflSlot, string> = {
+  THU: 'Thu night',
+  SUN_EARLY: 'Sun early',
+  SUN_LATE: 'Sun late',
+  SNF: 'Sun night',
+  MNF: 'Mon night',
+  OTHER: 'other',
+};
+
+/**
+ * Buckets a kickoff by US Eastern day and hour, which is how the NFL schedule
+ * is actually structured. Saturday and international morning games fall to
+ * OTHER, which sorts last and is never treated as a decisive final window.
+ */
+export function kickoffSlot(iso: string): NflSlot {
+  if (!iso) return 'OTHER';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'OTHER';
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short',
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(d);
+  const day = parts.find(p => p.type === 'weekday')?.value ?? '';
+  const hour = Number(parts.find(p => p.type === 'hour')?.value ?? NaN);
+
+  if (day === 'Thu') return 'THU';
+  if (day === 'Mon') return 'MNF';
+  if (day === 'Sun') {
+    if (hour >= 19) return 'SNF';
+    if (hour >= 16) return 'SUN_LATE';
+    if (hour >= 12) return 'SUN_EARLY';
+  }
+  return 'OTHER';
+}
+
 export interface NflGame {
   id: string;
+  /** Full ISO kickoff timestamp, as ESPN reports it. */
+  kickoff: string;
   date: string;
+  slot: NflSlot;
   /** e.g. "Final" or "Final/OT". */
   status: string;
   overtime: boolean;
@@ -108,7 +161,9 @@ export async function loadNflWeek(season: number, week: number): Promise<NflWeek
 
       return {
         id: e.id,
+        kickoff: e.date || '',
         date: (e.date || '').slice(0, 10),
+        slot: kickoffSlot(e.date || ''),
         status,
         overtime: /OT/i.test(status),
         teams: (comp.competitors || []).map((c: any) => ({

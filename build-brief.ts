@@ -79,12 +79,25 @@ function render(b: GameBrief): string {
   L.push(`  loser's score ranked ${b.week.loserScoreRankInWeek} of ${b.week.gamesPlayed * 2} that week`);
   L.push(`  margin ranked ${b.week.marginRankInWeek} of ${b.week.gamesPlayed} (1 = biggest)`);
 
+  if (b.lateSwing) {
+    const sw = b.lateSwing;
+    rule('HOW IT FINISHED');
+    L.push(`  going into ${sw.slot}: ${b.result.loser.name} ${sw.loserBefore}, ` +
+           `${b.result.winner.name} ${sw.winnerBefore}  (trailed by ${sw.deficit})`);
+    const pend = (who: string, list: { name: string; points: number }[]) =>
+      L.push(`    ${who} still to play: ` +
+        (list.length ? list.map(p => `${p.name} ${p.points}`).join(', ') : 'nobody'));
+    pend(b.result.winner.name, sw.winnerPending);
+    pend(b.result.loser.name, sw.loserPending);
+  }
+
   if (b.lineups) {
     for (const [label, lu] of [['WINNER', b.lineups.winner], ['LOSER', b.lineups.loser]] as const) {
       const side = label === 'WINNER' ? b.result.winner : b.result.loser;
       rule(`${label} LINEUP — ${side.name}`);
       for (const p of lu.starters) {
-        L.push(`  ${String(p.points).padStart(6)}  ${pct(p.vsAverage)}  ${p.name} (${p.position ?? '?'}, ${p.nflTeam ?? 'FA'})`);
+        L.push(`  ${String(p.points).padStart(6)}  ${pct(p.vsAverage)}  ${p.name} (${p.position ?? '?'}, ${p.nflTeam ?? 'FA'})` +
+               (p.slot ? `  [${p.slot}]` : ''));
         // What actually happened on the field, indented under the fantasy score.
         if (p.real?.statLine) L.push(`                     ${p.real.statLine}   [${p.real.game}]`);
         else if (p.real) L.push(`                     [${p.real.game}]`);

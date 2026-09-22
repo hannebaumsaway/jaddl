@@ -204,6 +204,19 @@ cannot catch a new one, so read for the shape rather than the wording.
 The older pieces use real NFL detail freely — Eddie Lacy scoring 0.3, Marshawn
 Lynch's goose egg, Rodgers having "a really bad day."
 
+**When a game kicked off can be the story.** A fantasy week resolves in NFL
+slot order — Thursday, Sunday early, Sunday late, Sunday night, Monday night —
+so a final margin can hide the shape completely. In 2026 Week 2 the Bensons beat
+the Longshanks by fifteen points, which reads like a tight game; in fact the
+Longshanks finished Sunday 27 points clear with nobody left to play while the
+Bensons still had Davante Adams on Monday night, and Adams scored 42.
+
+The brief computes this under **HOW IT FINISHED**, and only when the eventual
+winner was behind going in — that is the case worth writing about. Each starter
+also carries its slot (`[MNF]`, `[THU]`). **Don't force it.** Most games have no
+such story, and reaching for one where the slots did not matter is worse than
+leaving it out.
+
 **The brief now carries this**, from ESPN box scores, for 2023 onward. Each
 starter shows a real stat line, the game it came from, and any derived notes:
 a quarterback pulled early, a receiver with four targets, a defense that

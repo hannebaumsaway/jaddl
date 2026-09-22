@@ -17,6 +17,7 @@ import { supabase } from '../supabase/client';
 import { getPlayers, type NflPlayer } from '../sleeper/players';
 import {
   loadNflWeek, findPlayer, statLine, gameLine, playerNotes, defenseNotes,
+  SLOT_ORDER, SLOT_LABEL, type NflSlot,
   type NflWeek,
 } from '../nfl/espn';
 import { getPlayoffRoundLabel, getSeasonConfig, countsTowardRecord, type SeasonConfig } from '../supabase/api';
@@ -65,6 +66,12 @@ export interface BriefPlayerLine {
    * loaded or the player did not match a box score — never guessed.
    */
   real: { statLine: string | null; game: string; notes: string[] } | null;
+  /**
+   * Which NFL window this player kicked off in. Null when no box score
+   * matched. A fantasy week is decided in slot order, so this is what makes
+   * "still had Monday night to come" a statement of fact.
+   */
+  slot: NflSlot | null;
   /** This player's mean starter score across the season, or null if unknown. */
   seasonAverage: number | null;
   /** points / seasonAverage; >1 is an overperformance. Null when no average. */
@@ -78,6 +85,33 @@ export interface BriefLineup {
   benchPoints: number;
   /** Highest-scoring benched player, if any. */
   topBenched: BriefPlayerLine | null;
+}
+
+/**
+ * How the matchup stood before its last NFL window kicked off.
+ *
+ * A fantasy week does not resolve all at once: it resolves in slot order, and
+ * a result can invert in the final window. In 2026 week 2 the Fightin'
+ * Longshanks finished Sunday 27.05 points clear of the Bad News Bensons with
+ * only Davante Adams left to play on Monday night; Adams scored 42 and the
+ * Bensons won by 14.95. The final margin says "narrow", the shape says
+ * something else entirely.
+ *
+ * Only reported when the trailing side actually held a lead going in, which is
+ * the case worth writing about. `swing` is a fact about the scoreboard, never
+ * a claim about anyone's decisions.
+ */
+export interface BriefLateSwing {
+  /** The window that decided it, e.g. "Mon night". */
+  slot: string;
+  /** Points each side had banked before that window. */
+  winnerBefore: number;
+  loserBefore: number;
+  /** How far the eventual winner trailed. Always positive. */
+  deficit: number;
+  /** Starters each side still had to play in that window. */
+  winnerPending: { name: string; points: number }[];
+  loserPending: { name: string; points: number }[];
 }
 
 export interface BriefAngle {
@@ -128,6 +162,8 @@ export interface GameBrief {
     marginRankInWeek: number;
   };
   lineups: { winner: BriefLineup; loser: BriefLineup } | null;
+  /** Set when the final NFL window overturned a lead. See BriefLateSwing. */
+  lateSwing: BriefLateSwing | null;
   /** True when real NFL box scores were attached to the lineups. */
   nflContextAvailable: boolean;
   /** Sleeper display names, when a lineup matched. Articles name owners. */
@@ -255,6 +291,8 @@ interface SleeperMatchupRaw {
 /* ---------------------------------------------------------------- helpers */
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+/** Two decimals. Sleeper carries them, and a swing margin should neither invent precision nor lose it. */
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * Record through a given week. Games are filtered by `countsTowardRecord`, the
@@ -605,6 +643,7 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
       marginRankInWeek: weekMargins.findIndex(m => Math.abs(m - margin) < 0.005) + 1,
     },
     lineups,
+    lateSwing: computeLateSwing(lineups, winnerScore, loserScore),
     nflContextAvailable: !!lineups &&
       [...lineups.winner.starters, ...lineups.loser.starters].some(p => p.real !== null),
     owners,
@@ -632,14 +671,24 @@ function toLineup(
     // has no box-score line of its own, so it is described from what the
     // opposing offense managed.
     let real: BriefPlayerLine['real'] = null;
+    let slot: NflSlot | null = null;
     if (nflWeek && p?.nfl_team) {
       if (p.position === 'DEF') {
-        const g = nflWeek.games.find(x => x.teams.some(t => t.abbr === p.nfl_team || t.abbr === 'WSH'));
+        // Sleeper says WAS where ESPN says WSH, and that is the only
+        // disagreement. This used to read `t.abbr === p.nfl_team || t.abbr ===
+        // 'WSH'`, which matched the Washington game for EVERY defense whose own
+        // game sorted later — so Seattle, San Francisco and Kansas City all
+        // reported "[WSH 20 @ DAL 37]" in 2026 week 2 while their notes
+        // correctly described their own games.
+        const abbrs = p.nfl_team === 'WAS' ? ['WAS', 'WSH'] : [p.nfl_team];
+        const g = nflWeek.games.find(x => x.teams.some(t => abbrs.includes(t.abbr)));
         const notes = defenseNotes(nflWeek, p.nfl_team);
         if (notes.length) real = { statLine: null, game: g ? gameLine(g) : '', notes };
+        slot = g ? g.slot : null;
       } else {
         const hit = findPlayer(nflWeek, p.full_name, p.nfl_team);
         if (hit) real = { statLine: statLine(hit), game: gameLine(hit.game), notes: playerNotes(hit) };
+        slot = hit ? hit.game.slot : null;
       }
     }
 
@@ -650,9 +699,11 @@ function toLineup(
       points: round1(points),
       real,
       seasonAverage: avg === null ? null : round1(avg),
+      slot,
       vsAverage: avg && avg > 0 ? Math.round((points / avg) * 100) / 100 : null,
     };
   };
+
 
   const starters = m.starters.map((id, i) => line(id, m.starters_points[i] ?? 0));
   const starterSet = new Set(m.starters);
@@ -666,6 +717,59 @@ function toLineup(
     starters: [...starters].sort((a, b) => b.points - a.points),
     benchPoints: round1(bench.reduce((s, p) => s + p.points, 0)),
     topBenched: bench[0] ?? null,
+  };
+}
+
+/**
+ * Finds the last NFL window either side had a starter in, and reports the
+ * standing before it — but only when the eventual winner was behind.
+ *
+ * Returns null when every starter played in the same window, when the winner
+ * was already ahead, or when any starter is missing a slot (an unmatched box
+ * score would silently understate one side's pending points, and a wrong
+ * "trailed by" number is worse than none).
+ */
+function computeLateSwing(
+  lineups: { winner: BriefLineup; loser: BriefLineup } | null,
+  winnerScore: number,
+  loserScore: number
+): BriefLateSwing | null {
+  if (!lineups) return null;
+
+  const all = [...lineups.winner.starters, ...lineups.loser.starters];
+  if (!all.length || all.some(p => p.slot === null)) return null;
+
+  const rank = (slot: NflSlot) => SLOT_ORDER.indexOf(slot);
+  const last = all.reduce(
+    (acc, p) => (rank(p.slot as NflSlot) > rank(acc) ? (p.slot as NflSlot) : acc),
+    all[0].slot as NflSlot
+  );
+  if (last === 'OTHER') return null;
+
+  const pending = (l: BriefLineup) => l.starters.filter(p => p.slot === last);
+
+  // Subtract the pending players from the stored team total rather than
+  // summing the rest. Each BriefPlayerLine.points is already rounded to one
+  // decimal, so adding nine of them drifts off the real score — the Longshanks
+  // summed to 139.8 against a stored 139.7 in 2026 week 2.
+  const banked = (l: BriefLineup, final: number) =>
+    round2(final - pending(l).reduce((sum, p) => sum + p.points, 0));
+
+  const wPending = pending(lineups.winner);
+  const lPending = pending(lineups.loser);
+  if (!wPending.length && !lPending.length) return null;
+
+  const winnerBefore = banked(lineups.winner, winnerScore);
+  const loserBefore = banked(lineups.loser, loserScore);
+  if (winnerBefore >= loserBefore) return null;
+
+  return {
+    slot: SLOT_LABEL[last],
+    winnerBefore,
+    loserBefore,
+    deficit: round2(loserBefore - winnerBefore),
+    winnerPending: wPending.map(p => ({ name: p.name, points: p.points })),
+    loserPending: lPending.map(p => ({ name: p.name, points: p.points })),
   };
 }
 
