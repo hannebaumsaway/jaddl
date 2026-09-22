@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 
+import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import { Header, Footer, ErrorBoundary } from '@/components/layout';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
@@ -51,6 +52,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Google tag (gtag.js) — first in <head>, and only here. See the
+            component: adding it anywhere else double-counts every hit. */}
+        <GoogleAnalytics />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
