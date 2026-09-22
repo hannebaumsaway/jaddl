@@ -56,6 +56,23 @@ label.
 330–580 words is the middle half; median 441. But the spread is real — 260 to
 2797. Let the material set the length. A boring week gets one line.
 
+## Headlines
+
+**Sentence case. Never title case.** Capitalise the first word and proper nouns,
+nothing else:
+
+> The Boom have never started this well
+
+not "The Boom Have Never Started This Well". This holds for the subtitle too,
+which is a throwaway joke rather than a summary and reads as a sentence
+regardless.
+
+`voice-check.ts` warns on it, matching a closed list of function words,
+auxiliaries and plain verbs rather than "any capital after the first" — the
+league is full of multi-word proper nouns (Lawrence Football Jesus, Nate's
+Dinos or Whoever) and a headline naming two teams is mostly capitals by
+rights.
+
 ## League history is the signature
 
 More than anything else, the writing mines the archive. This is what separates

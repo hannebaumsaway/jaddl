@@ -194,6 +194,70 @@ export function checkVoice(body: string, week = 0): VoiceFinding[] {
   return findings;
 }
 
+/**
+ * Words that are capitalised in title case and are never part of a JADDL
+ * proper noun, so a capital on one mid-headline means the headline was
+ * title-cased.
+ *
+ * Deliberately not "every word after the first that starts with a capital":
+ * the league is full of multi-word proper nouns — Lawrence Football Jesus,
+ * Tulsa Angry Monkeys, Nate's Dinos or Whoever — and a headline naming two
+ * teams is mostly capitals by rights. Matching a closed list of function
+ * words, auxiliaries and plain verbs keeps team names out of it.
+ */
+const TITLE_CASE_TELLS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'nor', 'but', 'yet', 'so', 'as', 'if', 'than',
+  'then', 'that', 'this', 'these', 'those', 'of', 'in', 'on', 'at', 'to', 'for',
+  'with', 'from', 'by', 'into', 'onto', 'over', 'under', 'off', 'up', 'down',
+  'out', 'after', 'before', 'while', 'when', 'where', 'how', 'why', 'what',
+  'who', 'which', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+  'has', 'have', 'had', 'do', 'does', 'did', 'will', 'would', 'can', 'could',
+  'should', 'may', 'might', 'must', 'never', 'always', 'still', 'again',
+  'just', 'even', 'only', 'also', 'too', 'very', 'well', 'more', 'most',
+  'less', 'least', 'best', 'worst', 'better', 'worse', 'all', 'some', 'any',
+  'each', 'every', 'both', 'few', 'many', 'much', 'other', 'another', 'same',
+  'such', 'own', 'their', 'his', 'her', 'its', 'no', 'not', 'now', 'here',
+  'there', 'started', 'start', 'starts', 'win', 'wins', 'won', 'lose', 'loses',
+  'lost', 'beat', 'beats', 'take', 'takes', 'took', 'get', 'gets', 'got',
+  'make', 'makes', 'made', 'keep', 'keeps', 'hold', 'holds', 'held', 'lead',
+  'leads', 'led', 'fall', 'falls', 'fell', 'come', 'comes', 'came', 'go',
+  'goes', 'went', 'run', 'runs', 'ran', 'give', 'gives', 'gave', 'sit', 'sits',
+  'say', 'says', 'said', 'know', 'knows', 'looks', 'look', 'need', 'needs',
+]);
+
+/**
+ * Headlines are sentence case, never title case: "The Boom have never started
+ * this well". Applies to the title and the subtitle.
+ *
+ * Warn rather than error — a headline may legitimately open a proper noun that
+ * collides with the list, and the writer can see the sentence.
+ */
+export function checkHeadline(text: string, label = 'title'): VoiceFinding[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const findings: VoiceFinding[] = [];
+
+  words.forEach((raw, i) => {
+    if (i === 0) return; // sentence-initial capital is correct
+    // Strip surrounding punctuation and possessives before judging the word.
+    const word = raw.replace(/^[^A-Za-z]+/, '').replace(/[^A-Za-z]+$/, '');
+    if (!word) return;
+    // A word following a colon or a full stop starts a new sentence.
+    const prev = words[i - 1] ?? '';
+    if (/[.:!?]$/.test(prev)) return;
+    if (!/^[A-Z][a-z]/.test(word)) return; // not Capitalised, or an acronym
+    if (!TITLE_CASE_TELLS.has(word.toLowerCase())) return;
+    findings.push({
+      rule: 'headline/title-case',
+      severity: 'warn',
+      match: word,
+      line: 0,
+      hint: `Headlines are sentence case. Lowercase "${word}" in the ${label} unless it is a proper noun.`,
+    });
+  });
+
+  return findings;
+}
+
 /** Human-readable report, or an empty string when the draft is clean. */
 export function formatVoiceFindings(findings: VoiceFinding[]): string {
   if (!findings.length) return '';

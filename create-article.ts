@@ -20,7 +20,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createClient } from 'contentful-management';
 import { parseArticleSource, parseArticleMarkdown } from './src/lib/articles/markdown';
-import { checkVoice, formatVoiceFindings } from './src/lib/articles/voice-check';
+import { checkVoice, checkHeadline, formatVoiceFindings } from './src/lib/articles/voice-check';
 import { markdownBlocksToRichText } from './src/lib/articles/rich-text';
 import { richTextToMarkdown, toArticleSource } from './src/lib/articles/from-rich-text';
 
@@ -139,7 +139,11 @@ async function main() {
 
   // Advisory, never fatal: these rules are blunt enough to be wrong sometimes,
   // and a draft is worth more read than blocked. See voice-check.ts.
-  const voice = checkVoice(source.body, source.week);
+  const voice = [
+    ...checkHeadline(source.title, 'title'),
+    ...(source.subtitle ? checkHeadline(source.subtitle, 'subtitle') : []),
+    ...checkVoice(source.body, source.week),
+  ];
   if (voice.length) {
     const errs = voice.filter(f => f.severity === 'error').length;
     console.log('');
