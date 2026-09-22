@@ -16,8 +16,6 @@ import s from '@/components/article/article.module.css';
 interface ArticleDetailClientProps {
   article: ProcessedJaddlArticle;
   slate: WeekSlate | null;
-  /** Estimated reading time in minutes, computed on the server. */
-  readMinutes: number;
 }
 
 /**
@@ -35,7 +33,7 @@ function headingText(node: any): string {
     .trim();
 }
 
-export function ArticleDetailClient({ article, slate, readMinutes }: ArticleDetailClientProps) {
+export function ArticleDetailClient({ article, slate }: ArticleDetailClientProps) {
   const { isOpen, imageUrl, imageAlt, title, openLightbox, closeLightbox } = useLightbox();
 
   /** The rail already decided which game is the week high / closest / blowout. */
@@ -133,49 +131,19 @@ export function ArticleDetailClient({ article, slate, readMinutes }: ArticleDeta
     ? `ROUND ${article.week}`
     : `WK ${String(article.week).padStart(2, '0')}`;
 
-  const kicker = article.week === 0
-    ? 'PRESEASON'
-    : article.isPlayoff
-    ? `PLAYOFF ROUND ${article.week} RECAP`
-    : `WEEK ${article.week} ROUNDUP`;
-
-  const byline = [
-    'THE COMMISH',
-    `${article.year} SEASON`,
-    `${readMinutes} MIN`,
-    ...(slate ? [`${slate.games.length} GAMES`] : []),
-  ];
-
   return (
     <>
       <ArticleShell
         title={article.title}
         subtitle={article.subtitle}
-        kicker={kicker}
-        byline={byline}
         contextLabel={`${weekLabel}  /  ${article.year}  /  ${article.isPlayoff ? 'POSTSEASON' : 'REGULAR SEASON'}`}
+        cover={
+          article.featuredImage
+            ? { url: article.featuredImage.url, alt: article.featuredImage.alt || article.title }
+            : null
+        }
         slate={slate}
       >
-        {article.featuredImage && (
-          <figure className={s.figure} style={{ marginTop: 0 }}>
-            <div
-              className="relative w-full aspect-[3/2] cursor-zoom-in overflow-hidden"
-              onClick={() =>
-                openLightbox(article.featuredImage!.url, article.featuredImage!.alt || article.title, article.title)
-              }
-            >
-              <Image
-                src={article.featuredImage.url}
-                alt={article.featuredImage.alt || article.title}
-                fill
-                priority
-                className="object-cover"
-                sizes="(max-width: 900px) 100vw, 660px"
-              />
-            </div>
-          </figure>
-        )}
-
         {article.content && documentToReactComponents(article.content, richTextOptions)}
 
         {article.tags.length > 0 && (

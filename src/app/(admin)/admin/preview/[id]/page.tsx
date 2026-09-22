@@ -63,6 +63,17 @@ export default async function ArticlePreviewPage(props: { params: Promise<{ id: 
     );
   };
 
+  // The preview client resolves linked assets, so featureImage arrives with
+  // its file attached. Guarded anyway: an entry can reference an asset that is
+  // itself still a draft, and then there is no file to render.
+  const coverUrl = f.featureImage?.fields?.file?.url;
+  const cover = coverUrl
+    ? {
+        url: `https:${coverUrl}`,
+        alt: String(f.featureImage.fields.title ?? f.title ?? ''),
+      }
+    : null;
+
   const published = !!entry.sys.publishedVersion;
   const weekLabel = isPlayoff ? `ROUND ${week}` : `WK ${String(week).padStart(2, '0')}`;
 
@@ -70,15 +81,8 @@ export default async function ArticlePreviewPage(props: { params: Promise<{ id: 
     <ArticleShell
       title={String(f.title ?? '(untitled)')}
       subtitle={f.subtitle ? String(f.subtitle) : undefined}
-      kicker={isPlayoff ? `PLAYOFF ROUND ${week} RECAP` : `WEEK ${week} ROUNDUP`}
-      byline={[
-        'THE COMMISH',
-        `${year} SEASON`,
-        `${Math.max(1, Math.round(words / 230))} MIN`,
-        `${words} WORDS`,
-        published ? 'PUBLISHED' : 'UNPUBLISHED',
-      ]}
-      contextLabel={`PREVIEW  /  ${weekLabel}  /  ${year}`}
+      contextLabel={`PREVIEW  /  ${weekLabel}  /  ${year}  /  ${words} WORDS  /  ${published ? 'PUBLISHED' : 'UNPUBLISHED'}`}
+      cover={cover}
       slate={slate}
       footerRight={
         <Link
