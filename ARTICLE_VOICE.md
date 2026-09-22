@@ -188,6 +188,16 @@ cannot catch a new one, so read for the shape rather than the wording.
 - **Two weeks is not "all year".** Name the week. `voice-check.ts` flags
   season-long phrasing through Week 4.
 - Exact decimals, unrounded: 42.75, not 42.8.
+- **Name the unit on every number.** A recap runs two number systems through
+  the same sentence — fantasy points and real football yards — and a bare
+  figure belongs to whichever one the reader guesses. "Dalton Schultz put up 35
+  sitting there while Mark Andrews caught six for 49" is 35 fantasy points and
+  49 receiving yards, and nothing in it says so. Write the real line with its
+  units and attach the fantasy total plainly: "caught six for 49 yards and
+  managed 15.9 points". A list may set the unit once at its head — "four
+  starters over 30 points — Dak 32.6, Kelce 32.6" — and let the rest ride.
+  `voice-check.ts` warns on bare figures under 90; team scores sit above that
+  and do not fire.
 
 ## Real-world NFL context
 

@@ -128,7 +128,32 @@ const EARLY_SAMPLE: Rule[] = [
   },
 ];
 
-export const VOICE_RULES: Rule[] = [...SLOP, ...PERSON, ...EARLY_SAMPLE];
+/**
+ * Units. A recap mixes two number systems in the same sentence — fantasy
+ * points and real football yards — and a bare figure belongs to whichever the
+ * reader guesses. "Dalton Schultz put up 35 sitting there while Mark Andrews
+ * caught six for 49" is 35 fantasy points and 49 receiving yards, and nothing
+ * in it says so.
+ *
+ * The rule is deliberately crude: any number under 90 that is not carrying a
+ * unit, and is not obviously a record, a score line or a date, gets flagged.
+ * 90 is the cutoff because team scores run well above it and a starter's
+ * points effectively never reach it, so team totals do not fire.
+ *
+ * Warn rather than error — a list can establish its unit once and let the rest
+ * ride ("four starters over 30 points — Dak 32.6, Kelce 32.6"), which this
+ * cannot see.
+ */
+const UNITS: Rule[] = [
+  {
+    rule: 'units/bare-number',
+    severity: 'warn',
+    pattern: String.raw`(?<![\w.$-])(?:-)?\d{1,2}(?:\.\d+)?(?!\d)(?!\.\d)(?!\s*(?:-|–)\s*\d)(?!\s*(?:points?|pts?|yards?|yds?|catches|catch|receptions?|carries|carry|targets?|touchdowns?|scores?|sacks?|takeaways?|interceptions?|teams?|seasons?|weeks?|of\b|for\b|percent|%))`,
+    hint: 'Fantasy points or yards? Name the unit, or establish it earlier in the sentence.',
+  },
+].map(r => ({ ...r, pattern: new RegExp(r.pattern as unknown as string, 'g') })) as Rule[];
+
+export const VOICE_RULES: Rule[] = [...SLOP, ...PERSON, ...EARLY_SAMPLE, ...UNITS];
 
 /**
  * Scans body markdown. `week` enables the early-season sample rules; pass 0 to
@@ -142,9 +167,19 @@ export function checkVoice(body: string, week = 0): VoiceFinding[] {
     // Game headings are `## Team A 155.5 | Team B 114.4` — scores, not prose.
     if (/^#{2,3}\s/.test(line) && line.includes('|')) return;
 
+    // Records (0-2, 8-5, 22-10-1), score lines (41-31), hyphenated stat lines
+    // (8-for-10, 23-for-39) and years are all number-shaped prose the units
+    // rule must not read as bare figures.
+    const scrubbed = line
+      .replace(/\b\d+(?:-\d+){1,2}\b/g, ' ')
+      .replace(/\b\d+-for-\d+\b/g, ' ')
+      .replace(/\b(?:Week|week|Round|round|seed|Seed)\s+\d+\b/g, ' ')
+      .replace(/\b(?:19|20)\d{2}(?:'s)?\b/g, ' ');
+
     for (const rule of VOICE_RULES) {
       if (rule.throughWeek !== undefined && (week === 0 || week > rule.throughWeek)) continue;
-      for (const m of line.matchAll(rule.pattern)) {
+      const haystack = rule.rule.startsWith('units/') ? scrubbed : line;
+      for (const m of haystack.matchAll(rule.pattern)) {
         findings.push({
           rule: rule.rule,
           severity: rule.severity,
