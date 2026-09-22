@@ -591,6 +591,51 @@ a result was unusual will invent things; one handed a brief will not.
   site. Every query and write is scoped to `jaddlArticle` by convention, not by
   anything the token enforces — keep it that way.
 
+### Writing a week — the whole procedure
+
+One conversation per week. Everything needed is below or in the files it names;
+Ryan should not have to re-explain the pipeline.
+
+1. **Import the week's scores** in the admin UI first. A brief reads the result
+   from Supabase, so nothing works before that.
+2. `pnpm sync-players` if the cache is stale (20-hour minimum between runs).
+3. **Read `ARTICLE_VOICE.md` in full.** It is not auto-loaded and it is not
+   optional — most of what makes the column sound like Ryan is in there,
+   including a "Do not" section listing the tics a model reaches for by default.
+4. `pnpm brief --year Y --week W --team "Name"` for **every game that week**.
+   The default piece is a **whole-week roundup**, not a single-game essay, so
+   all six briefs get built before a word is written.
+5. Cross-check anything the brief does not directly assert — see below.
+6. Write it. Target the 330–580 word middle half unless the material earns more.
+7. `pnpm article --file <scratch path> --create` — a Contentful **draft**.
+8. Give Ryan the `/admin/preview/[id]` link and **stop**. He publishes, or tells
+   you to. Never publish unasked.
+
+### Verify before writing, not after
+
+Five factual errors were caught in the first week's draft, four of which would
+otherwise have shipped. Each is a class, not a one-off:
+
+- **Championship counts.** `games` starts in 2007; `trophy_case` starts in 2003.
+  Cross-check with `pnpm dossier --team "Name"` before claiming a trophy count.
+  The brief undercounted Mighty Boom 3 against 4.
+- **Which trophy is which.** The championship is the **Court-Ordered Limousine**.
+  Jared's Goblet is a group title. Getting this backwards inverted a team's
+  entire record in a draft.
+- **Series shape.** The brief carries a series' *standing*, never how it got
+  there. "Has never led" and "won six straight" must be computed from the game
+  log before being written.
+- **Mechanical angles.** `bench-regret` fires on arithmetic and cannot tell a
+  blunder from bad luck. Check the box score and ask whether the alternative was
+  startable *before* kickoff.
+- **Reasoning, not just facts.** One draft claimed nobody enjoyed a 96-point
+  shootout. Every number in that sentence was right. Read for sense as well as
+  for accuracy.
+
+NFL detail comes from the brief's attached ESPN box scores (2023+). Anything
+after the model's training cutoff that is *not* in the brief is a fabrication
+and every reader can check it.
+
 ### Decisions that are still standing
 
 - **Do not build automatic generation yet.** Ryan decided (2026-08-25) to use
