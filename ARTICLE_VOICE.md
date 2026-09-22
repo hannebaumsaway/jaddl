@@ -9,20 +9,30 @@ brief supplies league facts; this file supplies only how to write.
 
 ## The narrator
 
-First person, opinionated, present in the piece. This is the single biggest
-thing to get right — the writer is a character, not a wire service.
+**Third person. Not first, not second.** The column is written by a beat writer
+who covers JADDL and has no team in it. This is the single biggest thing to get
+right, and it is the one place where the corpus below must not be copied
+literally.
 
-> I don't know, guys…I'm smelling a 6-8 division title for the Lucky Break Bears.
+The 2008-2021 articles are first person — "I don't know, guys…I'm smelling a
+6-8 division title" — because **Ryan wrote them and Ryan owns the Fightin'
+Longshanks**. Anyone else writing as "I" is impersonating an owner. A draft
+that says "my guys" about the Longshanks, or "Nate, in your defense", has put
+the writer inside the league.
 
-> Also, someone check my sports math here, but I'm pretty sure Jesus could
-> clinch a division title next week, even with a loss.
+What carries over from those pieces is the *attitude*, which does not need a
+first person to survive:
 
-> Literally zero teams in JADDL history (unless my data mining skills have
-> gotten rusty) have bounced back from 2-6 to make the playoffs.
+> Literally zero teams in JADDL history have bounced back from 2-6 to make the
+> playoffs.
 
-He hedges, second-guesses himself, addresses the league directly ("Hey Lannie:
-you're doing well this year, but…"), and is happy to refuse to write about
-something: *"I'm not going to dignify this fucking game with a write-up."*
+Opinionated, willing to call a game bad, happy to leave a result without
+comment. Owners are written **about**, by name, never **to**: "In Nathan's
+defense," not "Nate, in your defense." Verdicts are stated flatly rather than
+hedged in the writer's own doubt.
+
+`pnpm article` runs `src/lib/articles/voice-check.ts` on every draft and flags
+first- and second-person pronouns.
 
 ## Format varies — pick one
 
@@ -132,8 +142,13 @@ corpus and read as pastiche:
 - "Welcome to Week N, where [owner] learned that [lesson]" as a closer
 - A rigid winner-section / loser-section / villain structure every time
 - An invented owner quote in every single article
-- Third-person omniscience with no narrator present
 - Even, uniform paragraph lengths
+
+**Callsigns — phrases that announce a point instead of making it.** "Here's the
+part worth stopping on", "Here's the good stuff", "What's unsettling is",
+"Make no mistake", "It's worth noting", "At the end of the day". Delete the
+run-up and start at the fact. `voice-check.ts` catches the common ones; it
+cannot catch a new one, so read for the shape rather than the wording.
 
 ## Facts
 
@@ -162,6 +177,16 @@ corpus and read as pastiche:
 - A multiplier of 2.0x+ is a genuine outlier, ~1.0x is a normal week, under 0.5x
   is why someone lost, and `—` means no baseline — say nothing about that
   player's form.
+- **Multipliers are worthless before about Week 5, and actively misleading in
+  Weeks 2-3.** `computeSeasonAverages` excludes the week being measured, so in
+  Week 2 a player's baseline is Week 1 — a single game. Ja'Marr Chase's 27
+  points in 2026 Week 2 read as "7.30x", which says only that he had a quiet
+  opener; 27 is an ordinary good day for Chase and writing it as an explosion
+  says the column does not know who Chase is. Early in the year, judge a line
+  against what the player is *expected* to do and describe the shape — "a week
+  after managing nothing at all" — rather than quoting the ratio.
+- **Two weeks is not "all year".** Name the week. `voice-check.ts` flags
+  season-long phrasing through Week 4.
 - Exact decimals, unrounded: 42.75, not 42.8.
 
 ## Real-world NFL context

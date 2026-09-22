@@ -20,6 +20,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createClient } from 'contentful-management';
 import { parseArticleSource, parseArticleMarkdown } from './src/lib/articles/markdown';
+import { checkVoice, formatVoiceFindings } from './src/lib/articles/voice-check';
 import { markdownBlocksToRichText } from './src/lib/articles/rich-text';
 import { richTextToMarkdown, toArticleSource } from './src/lib/articles/from-rich-text';
 
@@ -135,6 +136,19 @@ async function main() {
   console.log(`  blocks     ${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ')}`);
   console.log('');
   console.log('  not set here, add in Contentful: featureImage, featuredTeams');
+
+  // Advisory, never fatal: these rules are blunt enough to be wrong sometimes,
+  // and a draft is worth more read than blocked. See voice-check.ts.
+  const voice = checkVoice(source.body, source.week);
+  if (voice.length) {
+    const errs = voice.filter(f => f.severity === 'error').length;
+    console.log('');
+    console.log(`  voice check — ${errs} to fix, ${voice.length - errs} to look at`);
+    console.log(formatVoiceFindings(voice));
+  } else {
+    console.log('');
+    console.log('  voice check — clean');
+  }
 
   const { space, env } = await environment();
 
