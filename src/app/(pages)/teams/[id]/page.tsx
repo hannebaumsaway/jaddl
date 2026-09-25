@@ -112,9 +112,26 @@ export default async function TeamPage(props: Props) {
     expected: s.expectedWins,
   }));
 
-  // The mockup gets a reserved gutter so it never sits over data. Teams without
-  // one use the full width rather than leaving a dead column.
-  const mockup = profile?.uniformMockup?.url ?? null;
+  // The mockup is pinned top and bottom, so its height is fixed and its width
+  // follows the asset's own aspect. Those differ a lot — 0.617 for one of these
+  // and 0.784 for another — so a FIXED lane gives every team a different lap:
+  // measured, the wider figure lapped 91px over the cards while the narrower
+  // one left an 8px gap and never touched them.
+  //
+  // The lane therefore follows the asset. FIGURE_HEIGHT is the pinned height of
+  // the vitals + chart rows and EDGE_OFFSET the constant between the lane's
+  // edge and the card's; both were measured rather than derived, so re-measure
+  // if the rows above change height.
+  const mockup = profile?.uniformMockup ?? null;
+  const FIGURE_HEIGHT = 596;
+  const EDGE_OFFSET = 72;
+  const LAP = 24;
+  const lane =
+    mockup?.width && mockup.height
+      ? Math.round(
+          (mockup.width / mockup.height) * FIGURE_HEIGHT - LAP - EDGE_OFFSET
+        )
+      : null;
   const currentGroup = d.seasons[d.seasons.length - 1]?.groupName;
   const eyebrow = [currentGroup, d.identity.owner, d.identity.location]
     .filter(Boolean)
@@ -154,33 +171,36 @@ export default async function TeamPage(props: Props) {
             <div
               className={cn(
                 'relative flex flex-col gap-3',
-                mockup && 'xl:pr-[23rem] 2xl:pr-[27rem]'
+                mockup?.url && 'xl:pr-[23.5rem] 2xl:pr-[26.5rem]'
               )}
             >
-              {/* Uniform mockup: top-anchored on the right, bleeding off the edge.
+              {/* Uniform mockup: a fixed-width lane, figure pinned to its top,
+                  left and bottom, in front of the panels.
 
-                  It sits IN FRONT of the panels — behind them it was occluded by
-                  their opaque fill and showed only at the seams.
+                  `-top-11` clears the 20px of column padding and reaches 24px
+                  up over the row above; `-bottom-3` eats the flex gap so the
+                  figure's feet land exactly on the top of the card below. Those
+                  two fix the height, so the width follows the asset's aspect.
 
-                  It belongs to the vitals + season-chart rows, so it lives in
-                  their wrapper. `-top-11` clears the 20px of column padding and
-                  reaches 24px up into the header; `-bottom-3` eats the flex gap
-                  so the clip edge lands exactly on the top of the third row's
-                  cards. `overflow-hidden` does the cutting, which keeps the
-                  figure off the lower row without relying on panels being
-                  opaque. Decorative, click-through. */}
-              {mockup && (
+                  The figure FILLS that lane — `object-cover` anchored top-left,
+                  so every edge of the lane is a hard edge for every team and
+                  the asset's aspect is absorbed by cropping the bottom rather
+                  than by moving anything. A narrow asset simply loses more of
+                  its legs.
+
+                  Decorative and click-through. */}
+              {mockup?.url && (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute -bottom-3 -right-6 -top-11 z-20 hidden w-[24rem] select-none overflow-hidden xl:block 2xl:w-[28rem]"
+                  className="pointer-events-none absolute -bottom-3 -right-6 -top-11 z-20 hidden w-[30rem] select-none overflow-hidden xl:block 2xl:w-[33rem]"
                 >
                   <Image
-                    src={mockup}
+                    src={mockup.url}
                     alt=""
                     fill
                     priority
-                    sizes="(min-width: 1536px) 448px, 384px"
-                    className="object-contain object-top"
+                    sizes="(min-width: 1536px) 528px, 480px"
+                    className="object-cover object-left-top"
                   />
                 </div>
               )}
@@ -189,7 +209,10 @@ export default async function TeamPage(props: Props) {
 
               <Panel label="Season by season · scoring index against par">
                 <div className="h-64 sm:h-72 xl:h-80">
-                  <ScoringIndexChart data={seasonPoints} />
+                  <ScoringIndexChart
+                    data={seasonPoints}
+                    insetRight={mockup?.url ? 96 : 8}
+                  />
                 </div>
                 <p className="mt-3 font-mono text-[0.7rem] leading-relaxed text-muted-foreground">
                   100 is the league&rsquo;s scoring level for that season, so

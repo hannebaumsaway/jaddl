@@ -41,14 +41,32 @@ export interface SeasonPoint {
  * went from ~92 points a game to ~139, so a raw line mostly draws that step
  * change instead of the team. Par at 100 makes 2007 and 2025 comparable.
  */
-export function ScoringIndexChart({ data }: { data: SeasonPoint[] }) {
+export function ScoringIndexChart({
+  data,
+  insetRight = 8,
+}: {
+  data: SeasonPoint[];
+  /**
+   * Extra room on the right of the plot. The uniform mockup laps over this
+   * card, and without clearance it sits on top of the two most recent seasons —
+   * the ones anyone is actually looking for.
+   */
+  insetRight?: number;
+}) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 12, right: 8, bottom: 4, left: -18 }}>
+      <ComposedChart
+        data={data}
+        margin={{ top: 12, right: insetRight, bottom: 4, left: -18 }}
+      >
         <CartesianGrid stroke="var(--border)" vertical={false} />
         <XAxis
           dataKey="year"
-          tick={{ fontSize: 11, fill: AXIS, fontFamily: 'var(--font-mono, monospace)' }}
+          tick={{
+            fontSize: 11,
+            fill: AXIS,
+            fontFamily: 'var(--font-mono, monospace)',
+          }}
           tickLine={false}
           axisLine={{ stroke: 'var(--border)' }}
           interval="preserveStartEnd"
@@ -59,7 +77,11 @@ export function ScoringIndexChart({ data }: { data: SeasonPoint[] }) {
             (dataMin: number) => Math.floor(Math.min(dataMin, 95) - 4),
             (dataMax: number) => Math.ceil(dataMax + 4),
           ]}
-          tick={{ fontSize: 11, fill: AXIS, fontFamily: 'var(--font-mono, monospace)' }}
+          tick={{
+            fontSize: 11,
+            fill: AXIS,
+            fontFamily: 'var(--font-mono, monospace)',
+          }}
           tickLine={false}
           axisLine={false}
           width={44}
@@ -106,7 +128,10 @@ export function ScoringIndexChart({ data }: { data: SeasonPoint[] }) {
  * produced no dots at all.
  */
 function renderOutcomeDot(props: {
-  cx?: number; cy?: number; index?: number; payload?: SeasonPoint;
+  cx?: number;
+  cy?: number;
+  index?: number;
+  payload?: SeasonPoint;
 }) {
   const { cx, cy, index, payload } = props;
   const key = `dot-${payload?.year ?? index}`;
@@ -115,11 +140,35 @@ function renderOutcomeDot(props: {
   const shared = { cx, cy, key };
   switch (payload.outcome) {
     case 'won-title':
-      return <circle {...shared} r={6} fill={INK} stroke="var(--background)" strokeWidth={2} />;
+      return (
+        <circle
+          {...shared}
+          r={6}
+          fill={INK}
+          stroke="var(--background)"
+          strokeWidth={2}
+        />
+      );
     case 'lost-final':
-      return <circle {...shared} r={5} fill="var(--background)" stroke={INK} strokeWidth={2.5} />;
+      return (
+        <circle
+          {...shared}
+          r={5}
+          fill="var(--background)"
+          stroke={INK}
+          strokeWidth={2.5}
+        />
+      );
     case 'made-playoffs':
-      return <circle {...shared} r={3.5} fill={AXIS} stroke="var(--background)" strokeWidth={1.5} />;
+      return (
+        <circle
+          {...shared}
+          r={3.5}
+          fill={AXIS}
+          stroke="var(--background)"
+          strokeWidth={1.5}
+        />
+      );
     default:
       return <circle {...shared} r={2} fill={AXIS} opacity={0.5} />;
   }
@@ -146,14 +195,22 @@ export function LuckChart({ data }: { data: LuckPoint[] }) {
         <CartesianGrid stroke="var(--border)" vertical={false} />
         <XAxis
           dataKey="year"
-          tick={{ fontSize: 11, fill: AXIS, fontFamily: 'var(--font-mono, monospace)' }}
+          tick={{
+            fontSize: 11,
+            fill: AXIS,
+            fontFamily: 'var(--font-mono, monospace)',
+          }}
           tickLine={false}
           axisLine={{ stroke: 'var(--border)' }}
           interval="preserveStartEnd"
           minTickGap={18}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: AXIS, fontFamily: 'var(--font-mono, monospace)' }}
+          tick={{
+            fontSize: 11,
+            fill: AXIS,
+            fontFamily: 'var(--font-mono, monospace)',
+          }}
           tickLine={false}
           axisLine={false}
           width={44}
@@ -164,12 +221,20 @@ export function LuckChart({ data }: { data: LuckPoint[] }) {
           cursor={{ fill: 'var(--muted)' }}
           formatter={(v: number, _n, item) => {
             const p = item?.payload as LuckPoint;
-            return [`${v > 0 ? '+' : ''}${v} · ${p.actual} won, ${p.expected} earned`, 'vs expectation'];
+            return [
+              `${v > 0 ? '+' : ''}${v} · ${p.actual} won, ${p.expected} earned`,
+              'vs expectation',
+            ];
           }}
         />
         <Bar dataKey="delta" radius={[1, 1, 1, 1]} isAnimationActive={false}>
-          {data.map(d => (
-            <Cell key={d.year} fill={d.delta >= 0 ? 'var(--foreground)' : 'var(--muted-foreground)'} />
+          {data.map((d) => (
+            <Cell
+              key={d.year}
+              fill={
+                d.delta >= 0 ? 'var(--foreground)' : 'var(--muted-foreground)'
+              }
+            />
           ))}
         </Bar>
       </BarChart>
