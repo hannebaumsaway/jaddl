@@ -239,6 +239,31 @@ starter shows a real stat line, the game it came from, and any derived notes:
 a quarterback pulled early, a receiver with four targets, a defense that
 conceded 36 with two sacks. Use it freely — that is what it is for.
 
+**Box-score oddities get a comment.** A quarterback with a reception, a
+receiver who threw a pass, a kicker who ran one in — when a line is strange,
+say so and have fun with it rather than reporting it flat. 2026 Week 3: Josh
+Allen caught a pass for one yard, which earned "because throwing it and running
+it apparently weren't enough. Next week he returns punts." Ryan asked for this
+explicitly. Confirm the oddity is real first — the brief's ESPN parser has
+misread these before (a receiver's trick-play throw came through as a
+quarterback "pulled after 1 attempt"), so check Sleeper's stats for the same
+player before building a joke on it.
+
+**Check injuries before judging any low line.** A starter with two catches may
+have left in the first quarter. The brief does not say, and writing "saw two
+targets all day" about a player who sprained his ankle early (Justin Jefferson,
+2026 Week 3) — or "got three carries" about one who tore his ACL on the third
+(De'Von Achane, same week) — makes the column look like it doesn't watch
+football, and turns a season-ending injury into a punchline. Every week, for
+every starter: compare Sleeper's `off_snp` to `tm_off_snp` in
+`/stats/nfl/regular/{year}/{week}`, read `injury_status` on the player record,
+and confirm anything flagged against news reports before writing it. A low
+snap share is only a lead — Sleeper's injury status is as of today, not
+tied to the game. Then say it: an injury exit explains the line, and a serious
+one (out for the season, a starting QB gone for weeks) is news for that owner
+worth a sentence even when it didn't decide the game. Don't joke about the
+injury itself.
+
 Still never invent NFL narrative. If the brief does not have it, it is not
 known: anything after a model's training cutoff is fabrication, and an invented
 NFL detail is checkable by every reader, which would discredit the

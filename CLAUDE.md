@@ -606,6 +606,9 @@ Ryan should not have to re-explain the pipeline.
    The default piece is a **whole-week roundup**, not a single-game essay, so
    all six briefs get built before a word is written.
 5. Cross-check anything the brief does not directly assert — see below.
+   **Including injuries, league-wide, every week**: snap share and injury
+   status for every starter, confirmed against news. The brief carries neither.
+   Method in `ARTICLE_VOICE.md` → Real-world NFL context.
 6. Write it. Target the 330–580 word middle half unless the material earns more.
 7. `pnpm article --file <scratch path> --create` — a Contentful **draft**.
 8. Give Ryan the `/admin/preview/[id]` link and **stop**. He publishes, or tells
