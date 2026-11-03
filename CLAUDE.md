@@ -609,7 +609,9 @@ Ryan should not have to re-explain the pipeline.
    **Including injuries, league-wide, every week**: snap share and injury
    status for every starter, confirmed against news. The brief carries neither.
    Method in `ARTICLE_VOICE.md` → Real-world NFL context.
-6. Write it. Target the 330–580 word middle half unless the material earns more.
+6. Write it. Target 850–1,150 words for a six-game roundup (the 2026 norm),
+   up to ~1,300 when the week features one team. See `ARTICLE_VOICE.md` →
+   Length.
 7. `pnpm article --file <scratch path> --create` — a Contentful **draft**.
 8. Give Ryan the `/admin/preview/[id]` link and **stop**. He publishes, or tells
    you to. Never publish unasked.

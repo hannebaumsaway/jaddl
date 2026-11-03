@@ -53,8 +53,20 @@ label.
 
 ## Length
 
-330–580 words is the middle half; median 441. But the spread is real — 260 to
-2797. Let the material set the length. A boring week gets one line.
+**Target 850–1,150 words for a weekly roundup.** That is what the 2026 column
+has settled at: Weeks 1–7 ran 862 to 1,142, median about 1,040, every one
+covering all six games. A week that features one team (an intro essay ahead of
+the six game sections) can run to about 1,300.
+
+The 2008–2021 archive ran much shorter — 330–580 words in the middle half,
+median 441, spread 260 to 2,797 — because most of those pieces skipped games or
+were single-game essays. Use those numbers only for a single-game or themed
+piece, not for a full roundup.
+
+Length is set per game, not per week. The total is the sum of very uneven
+sections: the featured game gets four paragraphs, a dull one gets a sentence or
+two. Do not pad a dull game to even things out, and do not drop a game to hit
+a word count.
 
 ## Headlines
 
