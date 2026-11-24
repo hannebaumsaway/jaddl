@@ -471,7 +471,36 @@ every 2025 scoring average by 14/13.
 
 ### Routing and rendering
 
-- `src/app/(pages)/` — public site (home, news, scores, standings, teams, history, survivor). Mostly server components; the home page is `force-dynamic`, and `teams/page.tsx` plus the news client components are `'use client'`.
+- `src/app/(pages)/` — public site (home, news, scores, standings, teams, history, survivor). Mostly server components; the home page and `/history` are `force-dynamic`, and `teams/page.tsx` plus the news client components are `'use client'`.
+
+**Supabase-backed server pages render per request, not ISR.** A server page
+that reads no cookies, headers, params or search params is prerendered at
+`next build` and never refreshed, so it hides every score import and every
+SQL-editor correction until the next deploy. `/history` was exactly that (○ in
+the build output) until it got `export const dynamic = 'force-dynamic'`.
+`/scores`, `/standings`, `/survivor` and `/teams/[id]` are already dynamic (ƒ)
+because they read params. Check the ○/ƒ column after adding any page.
+
+Dynamic was chosen over the alternatives on purpose:
+
+- `revalidatePath` from `import-scores` would miss data corrections, which are
+  made by hand in the Supabase SQL Editor and never pass through the app.
+- `export const revalidate = N` serves stale data for up to N, and because
+  data functions swallow errors (`handleSupabaseError`) a regeneration during a
+  Supabase outage *succeeds* with empty tables and caches them. A build-time
+  outage did the same to the static page permanently.
+- The cost: every `/history` request runs `getLeagueHistory()` (the full game
+  log plus a handful of small tables). `/teams/[id]` already pays the same per
+  request, and league traffic is low. If it ever matters, wrap the query in a
+  tagged cache and invalidate the tag from `import-scores` — but corrections
+  would still need a manual `POST /api/revalidate?tag=…`.
+
+`/teams` is also ○, but it is a client component that fetches in the browser,
+so only its empty shell is static and the data is live. `/news` is ○ and reads
+**Contentful only**; it is refreshed only by a webhook call to
+`/api/revalidate?path=/news`. `?tag=…` does nothing for it, because the
+Contentful SDK makes its requests through axios rather than `fetch`, so no
+response is ever tagged.
 - `src/app/(admin)/admin/` — score import and playoff export dashboards, all client components, plus `admin/preview/[id]`, which renders an **unpublished** article through the real article shell. It reads via the Contentful *preview* API and lives under `/admin` so `proxy.ts` gates it — unpublished copy is behind the admin session rather than merely at an unguessable URL.
 - `src/app/api/` — admin auth (`login`/`logout`/`verify`), `admin/import-scores`, `export-playoff-data`, `revalidate`, and the diagnostic `analyze-db` / `test-supabase` routes.
 - `src/proxy.ts` gates the admin surface (see below). Next 16 renamed the `middleware` convention to `proxy`; it runs on the **Node** runtime, which is not configurable.

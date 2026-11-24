@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   description: 'Explore the complete history of the JADDL fantasy football league, including past champions, records, and memorable moments.',
 };
 
+// Rendered per request. Nothing here reads cookies or params, so Next would
+// otherwise prerender it at build and serve that snapshot until the next
+// deploy, hiding every score import and data correction. See "Routing and
+// rendering" in CLAUDE.md for why this is dynamic rather than ISR.
+export const dynamic = 'force-dynamic';
+
 // Removed static milestones and rivalries; now sourced from Supabase
 
 function formatDate(dateString: string) {
