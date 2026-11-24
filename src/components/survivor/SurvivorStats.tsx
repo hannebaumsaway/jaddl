@@ -15,6 +15,7 @@ interface SurvivorStatsProps {
 
 export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps) {
   if (survivorData.length === 0) return null;
+  const season = survivorData[0].year;
 
   // Calculate stats
   const allTeams = survivorData[0]?.teams || [];
@@ -117,7 +118,7 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
                   </span>
                 </div>
                 <div className="text-sm text-red-600 font-bold">
-                  {formatScore(elimination.score)}
+                  {formatScore(elimination.score, season)}
                 </div>
               </div>
             ))}
@@ -149,11 +150,11 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Avg Elimination Score:</span>
-              <span className="font-medium">{avgEliminationScore.toFixed(1)}</span>
+              <span className="font-medium">{formatScore(avgEliminationScore, season)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Highest Elimination Score:</span>
-              <span className="font-medium text-green-600">{formatScore(highestEliminationScore)}</span>
+              <span className="font-medium text-green-600">{formatScore(highestEliminationScore, season)}</span>
             </div>
           </div>
         </CardContent>

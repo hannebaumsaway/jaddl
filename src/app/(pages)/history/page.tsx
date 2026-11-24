@@ -6,6 +6,7 @@ import { Trophy, Crown, Star, Target, Calendar, TrendingUp, Swords, ThumbsUp, Th
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { getLeagueHistory } from '@/lib/supabase/history';
+import { formatScore } from '@/lib/articles/format';
 import { getTeams } from '@/lib/supabase/api';
 import Image from 'next/image';
 import {
@@ -198,7 +199,7 @@ export default async function HistoryPage() {
                 <span className="text-sm text-muted-foreground">Highest Single Game</span>
                 <div className="text-right">
                   <div className="font-bold text-foreground">
-                    {leagueHistory.gameRecords.highestSingleGame.value}
+                    {formatScore(leagueHistory.gameRecords.highestSingleGame.value, leagueHistory.gameRecords.highestSingleGame.year)}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     <TeamLink teamName={leagueHistory.gameRecords.highestSingleGame.team}>
@@ -211,7 +212,7 @@ export default async function HistoryPage() {
                 <span className="text-sm text-muted-foreground">Biggest Blowout</span>
                 <div className="text-right">
                   <div className="font-bold text-foreground">
-                    {leagueHistory.gameRecords.biggestBlowout.value}
+                    {formatScore(leagueHistory.gameRecords.biggestBlowout.value, leagueHistory.gameRecords.biggestBlowout.year)}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     <TeamLink teamName={leagueHistory.gameRecords.biggestBlowout.team}>
@@ -226,7 +227,7 @@ export default async function HistoryPage() {
                 <span className="text-sm text-muted-foreground">Closest Game</span>
                 <div className="text-right">
                   <div className="font-bold text-foreground">
-                    {leagueHistory.gameRecords.closestGame.value.toFixed(2)}
+                    {formatScore(leagueHistory.gameRecords.closestGame.value, leagueHistory.gameRecords.closestGame.year)}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     <TeamLink teamName={leagueHistory.gameRecords.closestGame.team}>

@@ -32,6 +32,7 @@
 
 import type { TeamDossier } from './dossier';
 import type { SeasonLine } from './records';
+import { formatScore } from '@/lib/articles/format';
 
 /** What an observation is about. At most one of each is shown before repeats. */
 export type Facet =
@@ -909,7 +910,7 @@ const detectors: Detector[] = [
       id: 'high-score-loss',
       facet: 'game',
       weight: 83,
-      text: `The most points they have ever scored — ${n1(hi.teamScore)}, ${hi.label.toLowerCase()} of ${hi.year} — was a loss. ${hi.opponentName} answered with ${n1(hi.opponentScore)}.`,
+      text: `The most points they have ever scored — ${formatScore(hi.teamScore, hi.year)}, ${hi.label.toLowerCase()} of ${hi.year} — was a loss. ${hi.opponentName} answered with ${formatScore(hi.opponentScore, hi.year)}.`,
     };
   },
 
@@ -921,7 +922,7 @@ const detectors: Detector[] = [
       id: 'low-and-lost',
       facet: 'game',
       weight: 70,
-      text: `Their lowest score ever, ${n1(lo.teamScore)} in ${lo.year}, was also nearly a win: ${lo.opponentName} managed just ${n1(lo.opponentScore)} and took it by ${n1(Math.abs(lo.margin))}.`,
+      text: `Their lowest score ever, ${formatScore(lo.teamScore, lo.year)} in ${lo.year}, was also nearly a win: ${lo.opponentName} managed just ${formatScore(lo.opponentScore, lo.year)} and took it by ${formatScore(Math.abs(lo.margin), lo.year)}.`,
     };
   },
 
@@ -947,7 +948,7 @@ const detectors: Detector[] = [
       id: 'massacre',
       facet: 'game',
       weight: 73,
-      text: `They once put ${n1(w.teamScore)} on ${w.opponentName} and held them to ${n1(w.opponentScore)} — ${w.label.toLowerCase()} of ${w.year}, and still the widest gap they have opened on anyone.`,
+      text: `They once put ${formatScore(w.teamScore, w.year)} on ${w.opponentName} and held them to ${formatScore(w.opponentScore, w.year)} — ${w.label.toLowerCase()} of ${w.year}, and still the widest gap they have opened on anyone.`,
     };
   },
 

@@ -34,7 +34,7 @@ export function WeekSlateRail({ slate, id = 'slate' }: { slate: WeekSlate; id?: 
       <label className={s.slateSummary} htmlFor={`${id}-toggle`}>
         <span className={`${s.mono} ${s.sumLabel}`}>THE SLATE</span>
         <span className={`${s.mono} ${s.sumNums}`}>
-          {slate.games.length} GAME{slate.games.length === 1 ? '' : 'S'} &middot; HIGH {fmt(slate.high)}
+          {slate.games.length} GAME{slate.games.length === 1 ? '' : 'S'} &middot; HIGH {fmt(slate.high, slate.year)}
         </span>
       </label>
 
@@ -48,20 +48,20 @@ export function WeekSlateRail({ slate, id = 'slate' }: { slate: WeekSlate; id?: 
           <div className={s.slateGame} key={`${game.winner.teamId}-${game.loser.teamId}-${i}`}>
             <div className={s.slateRow}>
               <span className={s.slateName}>{game.winner.name}</span>
-              <span className={`${s.mono} ${s.slateValue}`}>{fmt(game.winner.score)}</span>
+              <span className={`${s.mono} ${s.slateValue}`}>{fmt(game.winner.score, slate.year)}</span>
             </div>
             <div className={`${s.slateRow} ${s.slateLose}`}>
               <span className={s.slateName}>{game.loser.name}</span>
-              <span className={`${s.mono} ${s.slateValue}`}>{fmt(game.loser.score)}</span>
+              <span className={`${s.mono} ${s.slateValue}`}>{fmt(game.loser.score, slate.year)}</span>
             </div>
             {game.tag && <span className={`${s.mono} ${s.slateTag}`}>{game.tag}</span>}
           </div>
         ))}
 
         <div className={s.slateFoot}>
-          <span className={s.mono}>HIGH {fmt(slate.high)}</span>
-          <span className={s.mono}>LOW {fmt(slate.low)}</span>
-          <span className={s.mono}>AVG {fmt(slate.avg)}</span>
+          <span className={s.mono}>HIGH {fmt(slate.high, slate.year)}</span>
+          <span className={s.mono}>LOW {fmt(slate.low, slate.year)}</span>
+          <span className={s.mono}>AVG {fmt(slate.avg, slate.year)}</span>
         </div>
       </div>
     </div>

@@ -93,7 +93,7 @@ export default async function ArticlePreviewPage(props: { params: Promise<{ id: 
         </Link>
       }
     >
-      <ArticleBody blocks={blocks} tagFor={tagFor} />
+      <ArticleBody blocks={blocks} year={year} tagFor={tagFor} />
     </ArticleShell>
   );
 }

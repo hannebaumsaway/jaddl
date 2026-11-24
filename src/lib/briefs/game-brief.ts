@@ -135,8 +135,9 @@ export interface GameBrief {
     margin: number;
     isTie: boolean;
     /**
-     * Sleeper's two-decimal scores, when a lineup matched. Supabase rounds to
-     * one decimal, so these are the figures past articles actually quoted.
+     * Sleeper's scores, when a lineup matched. Supabase has stored the same
+     * hundredths since migration 006, so these differ only where a score was
+     * corrected after import.
      */
     exactScores: { winner: number; loser: number } | null;
   };
@@ -532,8 +533,8 @@ export async function buildGameBrief(params: BuildBriefParams): Promise<GameBrie
             winner: toLineup(winnerId, wM[0], players, seasonAverages, nflWeek),
             loser: toLineup(loserId, lM[0], players, seasonAverages, nflWeek),
           };
-          // Sleeper carries two decimals where Supabase rounds to one; the
-          // finer figure is what actually got published in past articles.
+          // Same figures Supabase stores (migration 006); kept so a score
+          // corrected after import shows up as a disagreement in the brief.
           sleeperScores = { winner: wM[0].points, loser: lM[0].points };
 
           // Articles refer to owners by name ("Ian", "Lannie"), which lives in

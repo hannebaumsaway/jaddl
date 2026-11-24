@@ -69,6 +69,7 @@ export function ArticleDetailClient({ article, slate }: ArticleDetailClientProps
               winnerScore={aWon ? a : b}
               loserName={aWon ? nameB : nameA}
               loserScore={aWon ? b : a}
+              year={article.year}
               isTie={a === b}
               tag={tagFor(a, b)}
             />

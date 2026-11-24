@@ -19,6 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { buildGameBrief, type GameBrief } from './src/lib/briefs/game-brief';
 import { supabase } from './src/lib/supabase/client';
+import { formatScore } from './src/lib/articles/format';
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -48,17 +49,25 @@ function render(b: GameBrief): string {
   const rule = (s: string) => L.push('', `── ${s} ${'─'.repeat(Math.max(0, 58 - s.length))}`);
   const pct = (v: number | null) => (v === null ? '   —  ' : `${v.toFixed(2)}x`.padStart(6));
 
-  // Prefer Sleeper's two-decimal figures when present; Supabase rounds to one.
+  // Supabase holds Sleeper's hundredths since migration 006, so the stored score
+  // is the score. Sleeper is still preferred when present, and a disagreement is
+  // printed: it means a hand correction or a later Sleeper stat correction.
+  const year = b.meta.year;
+  const sc = (v: number) => formatScore(v, year);
   const wScore = b.result.exactScores?.winner ?? b.result.winner.score;
   const lScore = b.result.exactScores?.loser ?? b.result.loser.score;
-  const exactMargin = Math.round((wScore - lScore) * 100) / 100;
+  const exactMargin = wScore - lScore;
 
   L.push(`${b.meta.year} ${b.meta.label}${b.meta.isPlayoff ? ' (playoff)' : ''}`);
-  L.push(`${b.result.winner.name}  ${wScore}`);
-  L.push(`${b.result.loser.name}  ${lScore}`);
-  L.push(`margin ${exactMargin}${b.result.isTie ? '  (TIE)' : ''}`);
-  if (b.result.exactScores) {
-    L.push(`(Supabase rounds these to ${b.result.winner.score} / ${b.result.loser.score})`);
+  L.push(`${b.result.winner.name}  ${sc(wScore)}`);
+  L.push(`${b.result.loser.name}  ${sc(lScore)}`);
+  L.push(`margin ${sc(exactMargin)}${b.result.isTie ? '  (TIE)' : ''}`);
+  if (
+    b.result.exactScores &&
+    (sc(b.result.exactScores.winner) !== sc(b.result.winner.score) ||
+      sc(b.result.exactScores.loser) !== sc(b.result.loser.score))
+  ) {
+    L.push(`(Supabase has ${sc(b.result.winner.score)} / ${sc(b.result.loser.score)} — check which is right)`);
   }
 
   rule('RECORDS');
@@ -75,7 +84,7 @@ function render(b: GameBrief): string {
   L.push(`  after : ${b.result.winner.name} ${b.series.afterWinnerWins}-${b.series.afterLoserWins}   (${b.series.meetings} meetings all-time)`);
 
   rule('THE WEEK');
-  L.push(`  high ${b.week.highScore}   low ${b.week.lowScore}   avg ${b.week.averageScore}   (${b.week.gamesPlayed} games)`);
+  L.push(`  high ${sc(b.week.highScore)}   low ${sc(b.week.lowScore)}   avg ${sc(b.week.averageScore)}   (${b.week.gamesPlayed} games)`);
   L.push(`  loser's score ranked ${b.week.loserScoreRankInWeek} of ${b.week.gamesPlayed * 2} that week`);
   L.push(`  margin ranked ${b.week.marginRankInWeek} of ${b.week.gamesPlayed} (1 = biggest)`);
 

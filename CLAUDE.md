@@ -111,9 +111,12 @@ for other reasons (2023 Week 6, 2025 Week 2) are left alone: either they were
 corrected by hand or Sleeper applied a stat correction later.
 
 Seasons before 2022 were recorded to one decimal at the source and stay that
-way, so **a score's precision depends on its era**. Display individual scores
-and margins with `formatScore`. Season totals and averages are fine at one
-decimal.
+way, so **a score's precision depends on its season, not its value**. From 2022
+every score shows two decimals, trailing zero included: 112.20–112.15, never
+112.2–112.15. Before 2022, one. Display every individual score, margin, weekly
+high/low and per-game average with `formatScore(value, year)`. The year is
+required, so the type-checker finds any call site that forgets it. Season
+totals are a different kind of number and keep their own formatting.
 
 `trophy_case` runs from **2003**, four seasons before `games`. It is therefore
 the authoritative championship source; anything derived from the game log
@@ -237,8 +240,8 @@ It exists because `teams/[id]/page.tsx` used to derive all of this inline and
 got several wrong — its career record counted playoff games and the 2025
 play-in, so it disagreed with the standings page for the same team. **The page
 is now fully on the dossier** (`Rebuild the team page against the dossier`):
-`src/components/team/panels.tsx` imports nothing but the `TeamDossier` type and
-holds no queries or game math of its own, and the page's only non-dossier calls
+`src/components/team/panels.tsx` imports nothing but the `TeamDossier` type
+and `formatScore`, and holds no queries or game math of its own, and the page's only non-dossier calls
 are `getTeamProfiles()`/`getTeams()`, which feed the franchise switcher rather
 than any statistic. `pnpm dossier --verify` asserts the agreement with
 `calculateStandings`.
@@ -582,8 +585,9 @@ Two things worth knowing before changing any of it:
 - **`formatScore` in `src/lib/articles/format.ts`, not `toFixed(1)` or
   `toFixed(2)`.** Precision differs by era (see **Scores carry two decimals
   from 2022** above): padding a pre-Sleeper 104.0 to "104.00" invents a digit,
-  and cutting 112.15 to "112.2" draws a tie next to a winner. It shows what the
-  number has, with a one-decimal floor.
+  and cutting 112.15 to "112.2" draws a tie next to a winner. The width comes
+  from the season (`scoreDecimals(year)`), never from the value: trimming a
+  trailing zero rendered 112.20 as "112.2" beside 112.15 in the same game.
 
 `## Team A 174.9 | Team B 103.95` — the roundup heading the column has used
 since 2008 — is parsed into a `GameMarker` on both surfaces. A heading that

@@ -136,6 +136,16 @@ export default async function ScoresPage(
     biggestMargin,
   } = summarizeGames(enhancedGames);
 
+  // Head-to-head mode spans seasons, so the high score takes the width of the
+  // season it was scored in rather than the selected one.
+  const highScoreYear =
+    completedGames.find(g => g.home_score === highScore || g.away_score === highScore)?.year ?? seasonYear;
+  // Averages and medians take the width of the scores they summarise. A week
+  // is one season; a head-to-head history can span eras, so use its latest.
+  const summaryYear = completedGames.length
+    ? Math.max(...completedGames.map(g => g.year))
+    : seasonYear;
+
   // Check if we have games for this year/week
   const hasGames = enhancedGames.length > 0;
 
@@ -478,7 +488,7 @@ export default async function ScoresPage(
             <Card>
               <CardContent className="p-6 text-center">
                 <div className="text-2xl font-bold text-foreground mb-2 font-mono">
-                  {team1AvgScore.toFixed(1)} - {team2AvgScore.toFixed(1)}
+                  {formatScore(team1AvgScore, summaryYear)} - {formatScore(team2AvgScore, summaryYear)}
                 </div>
                 <div className="text-sm text-muted-foreground">Avg Score</div>
                 <div className="text-xs text-muted-foreground mt-1">
@@ -519,7 +529,7 @@ export default async function ScoresPage(
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-foreground font-mono">
-              {narrowestMargin ? formatScore(narrowestMargin.margin) : 'N/A'}
+              {narrowestMargin ? formatScore(narrowestMargin.margin, narrowestMargin.year) : 'N/A'}
             </div>
             <div className="text-sm text-muted-foreground">Narrowest Margin</div>
             {narrowestMargin && (
@@ -532,7 +542,7 @@ export default async function ScoresPage(
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-foreground font-mono">
-              {biggestMargin ? formatScore(biggestMargin.margin) : 'N/A'}
+              {biggestMargin ? formatScore(biggestMargin.margin, biggestMargin.year) : 'N/A'}
             </div>
             <div className="text-sm text-muted-foreground">Biggest Margin</div>
             {biggestMargin && (
@@ -544,18 +554,18 @@ export default async function ScoresPage(
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-foreground font-mono">{medianScore.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-foreground font-mono">{formatScore(medianScore, summaryYear)}</div>
             <div className="text-sm text-muted-foreground">Median Score</div>
             {completedGames.length > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
-                avg: {avgScore.toFixed(1)}
+                avg: {formatScore(avgScore, summaryYear)}
               </div>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-foreground font-mono">{formatScore(highScore)}</div>
+            <div className="text-2xl font-bold text-foreground font-mono">{formatScore(highScore, highScoreYear)}</div>
             <div className="text-sm text-muted-foreground">High Score</div>
             {completedGames.length > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
@@ -626,7 +636,7 @@ export default async function ScoresPage(
                         </Link>
                       </div>
                       <div className={`text-2xl font-bold ${(game.away_score ?? 0) > (game.home_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {formatScore(game.away_score ?? 0)}
+                        {formatScore(game.away_score ?? 0, game.year)}
                       </div>
                     </div>
                     
@@ -657,7 +667,7 @@ export default async function ScoresPage(
                         </Link>
                       </div>
                       <div className={`text-2xl font-bold ${(game.home_score ?? 0) > (game.away_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {formatScore(game.home_score ?? 0)}
+                        {formatScore(game.home_score ?? 0, game.year)}
                       </div>
                     </div>
                   </div>
@@ -689,7 +699,7 @@ export default async function ScoresPage(
                         </div>
                       </div>
                       <div className={`league-score ${(game.away_score ?? 0) > (game.home_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {formatScore(game.away_score ?? 0)}
+                        {formatScore(game.away_score ?? 0, game.year)}
                       </div>
                     </div>
                     <div className="text-center text-sm text-muted-foreground font-medium">VS</div>
@@ -718,7 +728,7 @@ export default async function ScoresPage(
                         </div>
                       </div>
                       <div className={`league-score ${(game.home_score ?? 0) > (game.away_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {formatScore(game.home_score ?? 0)}
+                        {formatScore(game.home_score ?? 0, game.year)}
                       </div>
                     </div>
                     <div className="text-center pt-2">

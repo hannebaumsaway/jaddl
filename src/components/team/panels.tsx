@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { TeamDossier } from '@/lib/teams';
+import { formatScore } from '@/lib/articles/format';
 
 const rec = (w: number, l: number, t: number) => `${w}-${l}${t ? `-${t}` : ''}`;
 const pct = (v: number) => v.toFixed(3).replace(/^0/, '');
@@ -141,7 +142,7 @@ export function RecentForm({ d }: { d: TeamDossier }) {
         {games.map((g) => (
           <li key={g.gameId}>
             <span
-              title={`${g.year} ${g.label} · ${g.teamScore}–${g.opponentScore} vs ${nameOf.get(g.opponentId) ?? 'opponent'}`}
+              title={`${g.year} ${g.label} · ${formatScore(g.teamScore, g.year)}–${formatScore(g.opponentScore, g.year)} vs ${nameOf.get(g.opponentId) ?? 'opponent'}`}
               className={cn(
                 'flex h-7 w-7 items-center justify-center font-mono text-[0.7rem] font-semibold',
                 g.result === 'W'
@@ -390,25 +391,25 @@ export function FranchiseRecords({
   if (s.highestScore)
     marks.push({
       label: 'Highest score',
-      value: n1(s.highestScore.teamScore),
+      value: formatScore(s.highestScore.teamScore, s.highestScore.year),
       detail: `${s.highestScore.year} ${s.highestScore.label} v ${s.highestScore.opponentName}`,
     });
   if (s.lowestScore)
     marks.push({
       label: 'Lowest score',
-      value: n1(s.lowestScore.teamScore),
+      value: formatScore(s.lowestScore.teamScore, s.lowestScore.year),
       detail: `${s.lowestScore.year} ${s.lowestScore.label} v ${s.lowestScore.opponentName}`,
     });
   if (s.biggestWin)
     marks.push({
       label: 'Biggest win',
-      value: `+${n1(s.biggestWin.margin)}`,
+      value: `+${formatScore(s.biggestWin.margin, s.biggestWin.year)}`,
       detail: `${s.biggestWin.year} ${s.biggestWin.label} v ${s.biggestWin.opponentName}`,
     });
   if (s.worstLoss)
     marks.push({
       label: 'Worst loss',
-      value: n1(s.worstLoss.margin),
+      value: formatScore(s.worstLoss.margin, s.worstLoss.year),
       detail: `${s.worstLoss.year} ${s.worstLoss.label} v ${s.worstLoss.opponentName}`,
     });
   if (s.longestWinStreak)

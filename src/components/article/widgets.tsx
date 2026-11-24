@@ -20,25 +20,27 @@ export interface GameMarkerProps {
   winnerScore: number;
   loserName: string;
   loserScore: number;
+  /** Season of the game. Sets the score width: two decimals from 2022, one before. */
+  year: number;
   /** e.g. "WEEK HIGH". Margin is always shown; this is appended. */
   tag?: string | null;
   isTie?: boolean;
 }
 
 export function GameMarker({
-  winnerName, winnerScore, loserName, loserScore, tag, isTie,
+  winnerName, winnerScore, loserName, loserScore, year, tag, isTie,
 }: GameMarkerProps) {
   const margin = winnerScore - loserScore;
   return (
     <div className={s.gameMarker}>
       <span className={s.gameMarkerTeams}>
-        {winnerName} <span className={s.mono}>{fmt(winnerScore)}</span>{' '}
+        {winnerName} <span className={s.mono}>{fmt(winnerScore, year)}</span>{' '}
         <span className={s.gameMarkerLose}>
-          {loserName} <span className={s.mono}>{fmt(loserScore)}</span>
+          {loserName} <span className={s.mono}>{fmt(loserScore, year)}</span>
         </span>
       </span>
       <span className={`${s.mono} ${s.gameMarkerMeta}`}>
-        {isTie ? 'TIE' : `MARGIN ${fmt(margin)}`}
+        {isTie ? 'TIE' : `MARGIN ${fmt(margin, year)}`}
         {tag ? ` · ${tag}` : ''}
       </span>
     </div>

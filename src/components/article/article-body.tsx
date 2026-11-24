@@ -15,11 +15,13 @@ import s from './article.module.css';
 
 export interface ArticleBodyProps {
   blocks: ArticleBlock[];
+  /** The article's season, which sets how many decimals its game scores carry. */
+  year: number;
   /** Tag for a game, looked up from the week's slate by the caller. */
   tagFor?: (a: number, b: number) => string | null;
 }
 
-export function ArticleBody({ blocks, tagFor }: ArticleBodyProps) {
+export function ArticleBody({ blocks, year, tagFor }: ArticleBodyProps) {
   // The first paragraph carries the lede's size. Counted, not indexed, because
   // an article can open with something other than prose.
   let paragraphsSeen = 0;
@@ -37,6 +39,7 @@ export function ArticleBody({ blocks, tagFor }: ArticleBodyProps) {
                 winnerScore={aWon ? block.scoreA : block.scoreB}
                 loserName={aWon ? block.nameB : block.nameA}
                 loserScore={aWon ? block.scoreB : block.scoreA}
+                year={year}
                 isTie={block.scoreA === block.scoreB}
                 tag={tagFor?.(block.scoreA, block.scoreB) ?? null}
               />

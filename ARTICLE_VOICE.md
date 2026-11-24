@@ -216,7 +216,8 @@ cannot catch a new one, so read for the shape rather than the wording.
   after managing nothing at all" — rather than quoting the ratio.
 - **Two weeks is not "all year".** Name the week. `voice-check.ts` flags
   season-long phrasing through Week 4.
-- Exact decimals, unrounded: 42.75, not 42.8.
+- Exact decimals, unrounded: 42.75, not 42.8. From 2022 every score carries
+  two decimals, trailing zero included: 112.20, not 112.2. Before 2022, one.
 - **Name the unit on every number.** A recap runs two number systems through
   the same sentence — fantasy points and real football yards — and a bare
   figure belongs to whichever one the reader guesses. "Dalton Schultz put up 35

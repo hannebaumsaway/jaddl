@@ -96,7 +96,7 @@ export function SurvivorGrid({ survivorData, teamProfiles, teamEliminationMap }:
 
                             {/* Score */}
                             <div className={`text-xs font-bold ${isEliminated && eliminationWeek !== week ? 'text-gray-500' : 'text-blue-600'}`}>
-                              {team.score != null ? formatScore(team.score) : 'N/A'}
+                              {team.score != null ? formatScore(team.score, weekData.year) : 'N/A'}
                             </div>
 
                             {/* Elimination Status */}
