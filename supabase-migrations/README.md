@@ -114,3 +114,26 @@ SELECT tablename FROM pg_tables
 WHERE schemaname = 'public' AND NOT rowsecurity
 ORDER BY tablename;
 ```
+
+### 006_score_precision.sql
+
+Widens `games.home_score` / `away_score` from `DECIMAL(5,1)` to `NUMERIC(6,2)`.
+
+**When to run:** before `pnpm backfill-scores --apply`. Nothing else depends on it.
+
+**What it does:**
+- Step 1 shows the current column type (expect precision 5, scale 1)
+- Step 2 alters both columns; existing values are unchanged
+- Re-run step 1 afterwards to confirm scale 2
+
+**Why:** Sleeper scores to the hundredth, and the one-decimal column rounded
+every score imported since 2022. Two 0.05-point wins (2023 Week 2, 2026 Week 9)
+were stored as ties, which put a false tie into both teams' records, streaks,
+standings and seeding.
+
+**After running:**
+1. `pnpm backfill-scores` (dry run) to see what will change
+2. `pnpm backfill-scores --apply` to write the hundredths back from Sleeper.
+   It only touches rows whose stored score is exactly Sleeper's rounded, so a
+   score corrected by hand is reported and left alone
+3. `pnpm dossier --verify`

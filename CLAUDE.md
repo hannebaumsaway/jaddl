@@ -28,6 +28,9 @@ pnpm article --file /tmp/week2.md --create           # create a Contentful draft
 pnpm article --file ... --create --publish           # and make it live
 pnpm article --file ... --update <entryId>           # revise an existing one
 pnpm article --read <entryId>                        # back out as markdown
+
+pnpm backfill-scores                                 # dry run: restore Sleeper hundredths
+pnpm backfill-scores --apply                         # write (after migration 006)
 ```
 
 There is no test framework. "Tests" are standalone Node scripts at the repo root that load `.env.local` via `dotenv` and talk to Supabase/Contentful directly:
@@ -95,6 +98,22 @@ returned `null`/`[]` for every call. They are fixed; the live shapes are:
   scores" is `SUM(amount)`, not `COUNT(*)`.
 - The legacy `articles` table is an index of the pre-Contentful archive keyed by
   `page_id` (`"2008_1_1"`). `getArticles` was deleted rather than repaired.
+
+### Scores carry two decimals from 2022
+
+`games.home_score`/`away_score` are `NUMERIC(6,2)` (migration 006). They were
+`DECIMAL(5,1)`, which silently rounded every Sleeper score on insert. Sleeper
+scores to the hundredth, and two 0.05-point wins (2023 Week 2, 2026 Week 9) were
+stored as ties. Those were the only ties recorded since 2022.
+`pnpm backfill-scores` restores the hundredths from Sleeper. It only rewrites
+rows whose stored value is exactly Sleeper's rounded, so two scores that differ
+for other reasons (2023 Week 6, 2025 Week 2) are left alone: either they were
+corrected by hand or Sleeper applied a stat correction later.
+
+Seasons before 2022 were recorded to one decimal at the source and stay that
+way, so **a score's precision depends on its era**. Display individual scores
+and margins with `formatScore`. Season totals and averages are fine at one
+decimal.
 
 `trophy_case` runs from **2003**, four seasons before `games`. It is therefore
 the authoritative championship source; anything derived from the game log
@@ -531,10 +550,11 @@ Two things worth knowing before changing any of it:
   `<details>` measured open when it should have been closed, and engines hide
   its closed content by mechanisms that do not reliably yield to CSS. The
   replacement is one selector and no JavaScript.
-- **`formatScore` in `src/lib/articles/format.ts`, not `toFixed(2)`.** `games`
-  stores one decimal, so padding a stored 104.0 to "104.00" invents a digit.
-  Sleeper does carry two (103.95), which is why an article's own numbers can be
-  *more* precise than the rail beside them.
+- **`formatScore` in `src/lib/articles/format.ts`, not `toFixed(1)` or
+  `toFixed(2)`.** Precision differs by era (see **Scores carry two decimals
+  from 2022** above): padding a pre-Sleeper 104.0 to "104.00" invents a digit,
+  and cutting 112.15 to "112.2" draws a tie next to a winner. It shows what the
+  number has, with a one-decimal floor.
 
 `## Team A 174.9 | Team B 103.95` — the roundup heading the column has used
 since 2008 — is parsed into a `GameMarker` on both surfaces. A heading that

@@ -78,8 +78,8 @@ CREATE TABLE games (
   week INTEGER NOT NULL,
   home_team_id INTEGER REFERENCES teams(id),
   away_team_id INTEGER REFERENCES teams(id),
-  home_score DECIMAL(5,1),
-  away_score DECIMAL(5,1),
+  home_score NUMERIC(6,2),  -- was DECIMAL(5,1); widened in migration 006
+  away_score NUMERIC(6,2),
   is_playoff BOOLEAN DEFAULT false,
   game_date TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SurvivorData } from '@/lib/supabase/api';
+import { formatScore } from '@/lib/articles/format';
 import { ProcessedTeamProfile } from '@/types/contentful';
 import Image from 'next/image';
 
@@ -95,7 +96,7 @@ export function SurvivorGrid({ survivorData, teamProfiles, teamEliminationMap }:
 
                             {/* Score */}
                             <div className={`text-xs font-bold ${isEliminated && eliminationWeek !== week ? 'text-gray-500' : 'text-blue-600'}`}>
-                              {team.score?.toFixed(1) || 'N/A'}
+                              {team.score != null ? formatScore(team.score) : 'N/A'}
                             </div>
 
                             {/* Elimination Status */}

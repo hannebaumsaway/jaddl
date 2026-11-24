@@ -11,6 +11,7 @@ import {
   type ScoreboardQuery,
 } from '@/lib/supabase/scores';
 import { enhanceGamesWithTeamProfiles, summarizeGames } from '@/lib/utils/scores';
+import { formatScore } from '@/lib/articles/format';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import NavigationControls from '@/components/scores/NavigationControls';
@@ -518,7 +519,7 @@ export default async function ScoresPage(
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-foreground font-mono">
-              {narrowestMargin ? narrowestMargin.margin.toFixed(1) : 'N/A'}
+              {narrowestMargin ? formatScore(narrowestMargin.margin) : 'N/A'}
             </div>
             <div className="text-sm text-muted-foreground">Narrowest Margin</div>
             {narrowestMargin && (
@@ -531,7 +532,7 @@ export default async function ScoresPage(
         <Card>
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-foreground font-mono">
-              {biggestMargin ? biggestMargin.margin.toFixed(1) : 'N/A'}
+              {biggestMargin ? formatScore(biggestMargin.margin) : 'N/A'}
             </div>
             <div className="text-sm text-muted-foreground">Biggest Margin</div>
             {biggestMargin && (
@@ -554,7 +555,7 @@ export default async function ScoresPage(
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-foreground font-mono">{highScore}</div>
+            <div className="text-2xl font-bold text-foreground font-mono">{formatScore(highScore)}</div>
             <div className="text-sm text-muted-foreground">High Score</div>
             {completedGames.length > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
@@ -625,7 +626,7 @@ export default async function ScoresPage(
                         </Link>
                       </div>
                       <div className={`text-2xl font-bold ${(game.away_score ?? 0) > (game.home_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {(game.away_score ?? 0).toFixed(1)}
+                        {formatScore(game.away_score ?? 0)}
                       </div>
                     </div>
                     
@@ -656,7 +657,7 @@ export default async function ScoresPage(
                         </Link>
                       </div>
                       <div className={`text-2xl font-bold ${(game.home_score ?? 0) > (game.away_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {(game.home_score ?? 0).toFixed(1)}
+                        {formatScore(game.home_score ?? 0)}
                       </div>
                     </div>
                   </div>
@@ -688,7 +689,7 @@ export default async function ScoresPage(
                         </div>
                       </div>
                       <div className={`league-score ${(game.away_score ?? 0) > (game.home_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {(game.away_score ?? 0).toFixed(1)}
+                        {formatScore(game.away_score ?? 0)}
                       </div>
                     </div>
                     <div className="text-center text-sm text-muted-foreground font-medium">VS</div>
@@ -717,7 +718,7 @@ export default async function ScoresPage(
                         </div>
                       </div>
                       <div className={`league-score ${(game.home_score ?? 0) > (game.away_score ?? 0) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                        {(game.home_score ?? 0).toFixed(1)}
+                        {formatScore(game.home_score ?? 0)}
                       </div>
                     </div>
                     <div className="text-center pt-2">

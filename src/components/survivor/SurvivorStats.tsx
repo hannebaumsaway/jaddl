@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Target, TrendingDown, Clock } from 'lucide-react';
 import { SurvivorData } from '@/lib/supabase/api';
+import { formatScore } from '@/lib/articles/format';
 import { ProcessedTeamProfile } from '@/types/contentful';
 
 interface SurvivorStatsProps {
@@ -116,7 +117,7 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
                   </span>
                 </div>
                 <div className="text-sm text-red-600 font-bold">
-                  {elimination.score.toFixed(1)}
+                  {formatScore(elimination.score)}
                 </div>
               </div>
             ))}
@@ -152,7 +153,7 @@ export function SurvivorStats({ survivorData, teamProfiles }: SurvivorStatsProps
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Highest Elimination Score:</span>
-              <span className="font-medium text-green-600">{highestEliminationScore.toFixed(1)}</span>
+              <span className="font-medium text-green-600">{formatScore(highestEliminationScore)}</span>
             </div>
           </div>
         </CardContent>
